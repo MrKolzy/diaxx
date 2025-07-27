@@ -1,0 +1,12 @@
+# Files
+
+diaxx.sln
+diaxx.vcxproj
+diaxx.vcxproj.filters
+diaxx.vcxproj.user
+
+# Folders
+
+.vs/
+Debug/
+Release/
