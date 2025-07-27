@@ -14,7 +14,7 @@ private:
     void initialize_window();
 
     void initialize_vulkan();
-    void create_instance();
+    void create_instance(bool show_extensions);
 
     void main_loop();
     void cleanup();
