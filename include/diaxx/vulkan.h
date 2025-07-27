@@ -12,9 +12,13 @@ private:
     void start();
 
     void initialize_window();
+
     void initialize_vulkan();
+    void create_instance();
+
     void main_loop();
     void cleanup();
 
-    GLFWwindow* m_window {};
+    GLFWwindow* m_window   {};
+    VkInstance  m_instance {};
 };
