@@ -7,9 +7,9 @@
 #include <stdexcept>
 #include <vector>
 
-Vulkan::Vulkan()
+Vulkan::~Vulkan()
 {
-	start();
+	cleanup();
 }
 
 void Vulkan::start()
@@ -17,18 +17,19 @@ void Vulkan::start()
 	initialize_window();
 	initialize_vulkan();
 	main_loop();
-	cleanup();
 }
 
 void Vulkan::initialize_window()
 {
-	glfwInit();
+	if (!glfwInit())
+		throw std::runtime_error("[Error]: Failed to initialize GLFW.");
 
 	glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API); // Specify that's not an OpenGL context
 	glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);   // Make the window non-resizable
 
-	m_window = glfwCreateWindow(constants::g_width, constants::g_height, "Diaxx", nullptr
-		, nullptr);
+	m_window = glfwCreateWindow(constants::g_width, constants::g_height, "Diaxx", nullptr, nullptr);
+	if (!m_window)
+		throw std::runtime_error("[Error]: Failed to create GLFW window.");
 }
 
 void Vulkan::initialize_vulkan()
@@ -39,7 +40,7 @@ void Vulkan::initialize_vulkan()
 void Vulkan::create_instance(bool show_extensions)
 {
 	// Useful information to the driver in order to optimize our specific application
-	VkApplicationInfo application_information { 
+	const VkApplicationInfo application_information { 
 		.sType              { VK_STRUCTURE_TYPE_APPLICATION_INFO },
 		.pApplicationName   { "Diaxx"                            },
 		.applicationVersion { VK_MAKE_VERSION(1, 0, 0)           },
@@ -52,7 +53,7 @@ void Vulkan::create_instance(bool show_extensions)
 	std::uint32_t glfw_extension_count {};
 	const char**  glfw_extension_names { glfwGetRequiredInstanceExtensions(&glfw_extension_count) };
 
-	VkInstanceCreateInfo create_info {
+	const VkInstanceCreateInfo create_info {
 		.sType                   { VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO },
 		.pApplicationInfo        { &application_information               },
 		.enabledLayerCount       { 0                                      },
@@ -86,7 +87,7 @@ void Vulkan::create_instance(bool show_extensions)
 
 			for (const auto& extension : extensions)
 			{
-				if (std::strcmp(glfw_extension_name, extension.extensionName) == 0)
+				if (!std::strcmp(glfw_extension_name, extension.extensionName))
 				{
 					std::println("\t- {}", extension.extensionName);
 					break;
@@ -95,7 +96,7 @@ void Vulkan::create_instance(bool show_extensions)
 		}
 	}
 
-	VkResult result { vkCreateInstance(&create_info, nullptr, &m_instance) };
+	const VkResult result { vkCreateInstance(&create_info, nullptr, &m_instance) };
 	if (result != VK_SUCCESS)
 		throw std::runtime_error("[Error]: The instance could not be created.");
 }
@@ -108,9 +109,17 @@ void Vulkan::main_loop()
 
 void Vulkan::cleanup()
 {
-	vkDestroyInstance(m_instance, nullptr);
-
-	glfwDestroyWindow(m_window);
-
+	if (m_instance)
+	{
+		vkDestroyInstance(m_instance, nullptr);
+		m_instance = nullptr;
+	}
+	
+	if (m_window)
+	{
+		glfwDestroyWindow(m_window);
+		m_window = nullptr;
+	}
+	
 	glfwTerminate();
 }

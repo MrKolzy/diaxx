@@ -9,6 +9,7 @@ int main()
     try
     {
         Vulkan vulkan {};
+        vulkan.start();
     }
     catch (const std::exception& exception)
     {
