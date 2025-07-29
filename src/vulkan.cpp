@@ -208,8 +208,7 @@ bool Vulkan::check_validation_layer_support()
 std::vector<const char*> Vulkan::get_required_extensions()
 {
 	std::uint32_t glfw_extension_count {};
-	const char**  glfw_extensions      {};
-	glfw_extensions = glfwGetRequiredInstanceExtensions(&glfw_extension_count);
+	const char**  glfw_extensions      { glfwGetRequiredInstanceExtensions(&glfw_extension_count) };
 
 	if (!glfw_extensions)
 		throw std::runtime_error("[Error]: Failed to get required GLFW extensions.");
