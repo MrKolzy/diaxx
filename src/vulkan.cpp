@@ -4,6 +4,7 @@
 #include <cstring>
 #include <iostream>
 #include <print>
+#include <set>
 #include <stdexcept>
 
 namespace
@@ -63,6 +64,7 @@ void Vulkan::initialize_vulkan()
 {
 	create_instance(true);
 	setup_debug_messenger();
+	create_surface();
 	pick_physical_device();
 	create_logical_device();
 }
@@ -162,6 +164,12 @@ void Vulkan::setup_debug_messenger()
 		throw std::runtime_error("[Error]: Failed to set up debug messenger.");
 }
 
+void Vulkan::create_surface()
+{
+	if (glfwCreateWindowSurface(m_instance, m_window, nullptr, &m_surface) != VK_SUCCESS)
+		throw std::runtime_error("[Error]: Failed to create window surface.");
+}
+
 void Vulkan::pick_physical_device()
 {
 	std::uint32_t device_count {};
@@ -190,22 +198,30 @@ void Vulkan::create_logical_device()
 {
 	const QueueFamilyIndices indices { find_queue_families(m_physical_device) };
 
+	std::vector<VkDeviceQueueCreateInfo> queue_create_infos {};
+	const std::set<std::uint32_t> unique_queue_families { indices.m_graphics_family.value(),
+		indices.m_present_family.value() };
+
 	const float queue_priority { 1.0f };
-	const VkDeviceQueueCreateInfo queue_create_info {
-		.sType            { VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO   },
-		.queueFamilyIndex { indices.m_graphics_family.value()            },
-		.queueCount       { 1                                            },
-		.pQueuePriorities { &queue_priority                              }
-	};
+	for (std::uint32_t queue_family : unique_queue_families)
+	{
+		const VkDeviceQueueCreateInfo queue_create_info {
+			.sType            { VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO },
+			.queueFamilyIndex { queue_family                               },
+			.queueCount       { 1                                          },
+			.pQueuePriorities { &queue_priority                            },
+		};
+		queue_create_infos.push_back(queue_create_info);
+	}
 
 	const VkPhysicalDeviceFeatures device_features {};
 
 	VkDeviceCreateInfo create_info {
-		.sType                 { VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO },
-		.queueCreateInfoCount  { 1                                    },
-		.pQueueCreateInfos     { &queue_create_info                   },
-		.enabledExtensionCount { 0                                    },
-		.pEnabledFeatures      { &device_features                     }
+		.sType                 { VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO                  },
+		.queueCreateInfoCount  { static_cast<std::uint32_t>(queue_create_infos.size()) },
+		.pQueueCreateInfos     { queue_create_infos.data()                             },
+		.enabledExtensionCount { 0                                                     },
+		.pEnabledFeatures      { &device_features                                      }
 	};
 
 	if (constants::g_enable_validation_layers)
@@ -218,6 +234,7 @@ void Vulkan::create_logical_device()
 		throw std::runtime_error("[Error]: Failed to create logical device.");
 
 	vkGetDeviceQueue(m_device, indices.m_graphics_family.value(), 0, &m_graphics_queue);
+	vkGetDeviceQueue(m_device, indices.m_present_family.value(), 0, &m_present_queue  );
 }
 
 bool Vulkan::is_device_suitable(VkPhysicalDevice device)
@@ -237,11 +254,17 @@ QueueFamilyIndices Vulkan::find_queue_families(VkPhysicalDevice device)
 	std::vector<VkQueueFamilyProperties> queue_families(queue_family_count);
 	vkGetPhysicalDeviceQueueFamilyProperties(device, &queue_family_count, queue_families.data());
 
-	int i {};
+	std::uint32_t i {};
 	for (const auto& queue_family : queue_families)
 	{
 		if (queue_family.queueFlags & VK_QUEUE_GRAPHICS_BIT)
 			indices.m_graphics_family = i;
+
+		VkBool32 present_support { false };
+		vkGetPhysicalDeviceSurfaceSupportKHR(device, i, m_surface, &present_support);
+
+		if (present_support)
+			indices.m_present_family = i;
 
 		if (indices.is_complete())
 			break;
@@ -339,7 +362,13 @@ void Vulkan::cleanup()
 		destroy_debug_utils_messenger_ext(m_instance, m_debug_messenger, nullptr);
 		m_debug_messenger = nullptr;
 	}
-		
+	
+	if (m_surface)
+	{
+		vkDestroySurfaceKHR(m_instance, m_surface, nullptr);
+		m_surface = nullptr;
+	}
+
 	if (m_instance)
 	{
 		vkDestroyInstance(m_instance, nullptr);

@@ -11,8 +11,9 @@
 struct QueueFamilyIndices
 {
     std::optional<std::uint32_t> m_graphics_family {};
+    std::optional<std::uint32_t> m_present_family  {};
 
-    bool is_complete() const { return m_graphics_family.has_value(); }
+    bool is_complete() const { return m_graphics_family.has_value() && m_present_family.has_value(); }
 };
 
 class Vulkan
@@ -37,6 +38,7 @@ private:
     void initialize_vulkan();
     void create_instance(bool show_extensions);
     void setup_debug_messenger();
+    void create_surface();
     void pick_physical_device();
     void create_logical_device();
 
@@ -61,4 +63,6 @@ private:
     VkPhysicalDevice         m_physical_device {};
     VkDevice                 m_device          {};
     VkQueue                  m_graphics_queue  {};
+    VkSurfaceKHR             m_surface         {};
+    VkQueue                  m_present_queue   {};
 };
