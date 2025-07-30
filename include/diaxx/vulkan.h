@@ -4,7 +4,16 @@
 
 #include <GLFW/glfw3.h>
 
+#include <cstdint>
+#include <optional>
 #include <vector>
+
+struct QueueFamilyIndices
+{
+    std::optional<std::uint32_t> m_graphics_family {};
+
+    bool is_complete() const { return m_graphics_family.has_value(); }
+};
 
 class Vulkan
 {
@@ -30,6 +39,9 @@ private:
     void setup_debug_messenger();
     void pick_physical_device();
 
+    bool is_device_suitable(VkPhysicalDevice device);
+    QueueFamilyIndices find_queue_families(VkPhysicalDevice device);
+
     bool check_validation_layer_support();
     std::vector<const char*> get_required_extensions();
     void populate_debug_messenger_create_info(VkDebugUtilsMessengerCreateInfoEXT& create_info);  
@@ -45,4 +57,5 @@ private:
     GLFWwindow*              m_window          {};
     VkInstance               m_instance        {};
     VkDebugUtilsMessengerEXT m_debug_messenger {};
+    VkPhysicalDevice         m_physical_device {};
 };

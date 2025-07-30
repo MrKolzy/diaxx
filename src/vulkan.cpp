@@ -11,7 +11,7 @@
 namespace
 {
 	// Proxy Function
-	VkResult create_debug_utils_messenger_ext(VkInstance instance,
+	static VkResult create_debug_utils_messenger_ext(VkInstance instance,
 		const VkDebugUtilsMessengerCreateInfoEXT* create_info,
 		const VkAllocationCallbacks* allocator, VkDebugUtilsMessengerEXT* debug_messenger)
 	{
@@ -25,7 +25,7 @@ namespace
 	}
 
 	// Proxy Function
-	void destroy_debug_utils_messenger_ext(VkInstance instance,
+	static void destroy_debug_utils_messenger_ext(VkInstance instance,
 		VkDebugUtilsMessengerEXT debug_messenger, const VkAllocationCallbacks* allocator)
 	{
 		const auto function { reinterpret_cast<PFN_vkDestroyDebugUtilsMessengerEXT>(
@@ -65,6 +65,7 @@ void Vulkan::initialize_vulkan()
 {
 	create_instance(true);
 	setup_debug_messenger();
+	pick_physical_device();
 }
 
 void Vulkan::create_instance(bool show_extensions)
@@ -164,6 +165,58 @@ void Vulkan::setup_debug_messenger()
 
 void Vulkan::pick_physical_device()
 {
+	std::uint32_t device_count {};
+	vkEnumeratePhysicalDevices(m_instance, &device_count, nullptr);
+
+	if (!device_count)
+		throw std::runtime_error("[Error]: Failed to find GPUs with Vulkan support.");
+
+	std::vector<VkPhysicalDevice> devices(device_count);
+	vkEnumeratePhysicalDevices(m_instance, &device_count, devices.data());
+
+	for (const auto& device : devices)
+	{
+		if (is_device_suitable(device))
+		{
+			m_physical_device = device;
+			break;
+		}
+	}
+
+	if (m_physical_device == VK_NULL_HANDLE)
+		throw std::runtime_error("[Error]: Failed to find a suitable GPU.");
+}
+
+bool Vulkan::is_device_suitable(VkPhysicalDevice device)
+{
+	const QueueFamilyIndices indices { find_queue_families(device) };
+
+	return indices.is_complete();
+}
+
+QueueFamilyIndices Vulkan::find_queue_families(VkPhysicalDevice device)
+{
+	QueueFamilyIndices indices {};
+
+	std::uint32_t queue_family_count {};
+	vkGetPhysicalDeviceQueueFamilyProperties(device, &queue_family_count, nullptr);
+
+	std::vector<VkQueueFamilyProperties> queue_families(queue_family_count);
+	vkGetPhysicalDeviceQueueFamilyProperties(device, &queue_family_count, queue_families.data());
+
+	int i {};
+	for (const auto& queue_family : queue_families)
+	{
+		if (queue_family.queueFlags & VK_QUEUE_GRAPHICS_BIT)
+			indices.m_graphics_family = i;
+
+		if (indices.is_complete())
+			break;
+
+		++i;
+	}
+
+	return indices;
 }
 
 bool Vulkan::check_validation_layer_support()
