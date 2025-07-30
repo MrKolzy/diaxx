@@ -1,12 +1,10 @@
 #include "diaxx/constants.h"
 #include "diaxx/vulkan.h"
 
-#include <cstdint>
 #include <cstring>
 #include <iostream>
 #include <print>
 #include <stdexcept>
-#include <vector>
 
 namespace
 {
@@ -66,6 +64,7 @@ void Vulkan::initialize_vulkan()
 	create_instance(true);
 	setup_debug_messenger();
 	pick_physical_device();
+	create_logical_device();
 }
 
 void Vulkan::create_instance(bool show_extensions)
@@ -187,6 +186,40 @@ void Vulkan::pick_physical_device()
 		throw std::runtime_error("[Error]: Failed to find a suitable GPU.");
 }
 
+void Vulkan::create_logical_device()
+{
+	const QueueFamilyIndices indices { find_queue_families(m_physical_device) };
+
+	const float queue_priority { 1.0f };
+	const VkDeviceQueueCreateInfo queue_create_info {
+		.sType            { VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO   },
+		.queueFamilyIndex { indices.m_graphics_family.value()            },
+		.queueCount       { 1                                            },
+		.pQueuePriorities { &queue_priority                              }
+	};
+
+	const VkPhysicalDeviceFeatures device_features {};
+
+	VkDeviceCreateInfo create_info {
+		.sType                 { VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO },
+		.queueCreateInfoCount  { 1                                    },
+		.pQueueCreateInfos     { &queue_create_info                   },
+		.enabledExtensionCount { 0                                    },
+		.pEnabledFeatures      { &device_features                     }
+	};
+
+	if (constants::g_enable_validation_layers)
+	{
+		create_info.enabledLayerCount   = { static_cast<std::uint32_t>(constants::g_validation_layers.size()) };
+		create_info.ppEnabledLayerNames = { constants::g_validation_layers.data() };
+	}
+
+	if (vkCreateDevice(m_physical_device, &create_info, nullptr, &m_device) != VK_SUCCESS)
+		throw std::runtime_error("[Error]: Failed to create logical device.");
+
+	vkGetDeviceQueue(m_device, indices.m_graphics_family.value(), 0, &m_graphics_queue);
+}
+
 bool Vulkan::is_device_suitable(VkPhysicalDevice device)
 {
 	const QueueFamilyIndices indices { find_queue_families(device) };
@@ -295,6 +328,12 @@ void Vulkan::main_loop()
 
 void Vulkan::cleanup()
 {
+	if (m_device)
+	{
+		vkDestroyDevice(m_device, nullptr);
+		m_device = nullptr;
+	}
+
 	if (constants::g_enable_validation_layers)
 	{
 		destroy_debug_utils_messenger_ext(m_instance, m_debug_messenger, nullptr);

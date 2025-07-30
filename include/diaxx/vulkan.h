@@ -38,6 +38,7 @@ private:
     void create_instance(bool show_extensions);
     void setup_debug_messenger();
     void pick_physical_device();
+    void create_logical_device();
 
     bool is_device_suitable(VkPhysicalDevice device);
     QueueFamilyIndices find_queue_families(VkPhysicalDevice device);
@@ -58,4 +59,6 @@ private:
     VkInstance               m_instance        {};
     VkDebugUtilsMessengerEXT m_debug_messenger {};
     VkPhysicalDevice         m_physical_device {};
+    VkDevice                 m_device          {};
+    VkQueue                  m_graphics_queue  {};
 };
