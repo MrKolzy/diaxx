@@ -9,12 +9,12 @@ int main()
     try
     {
         Vulkan vulkan {};
-        vulkan.start();
+        vulkan.run();
     }
     catch (const std::exception& exception)
     {
         std::cerr << exception.what() << '\n';
-        
+
         return EXIT_FAILURE;
     }
 

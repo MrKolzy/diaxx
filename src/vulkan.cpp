@@ -9,7 +9,7 @@
 
 namespace
 {
-	// Proxy Function
+	// setup_debug_messenger
 	static VkResult create_debug_utils_messenger_ext(VkInstance instance,
 		const VkDebugUtilsMessengerCreateInfoEXT* create_info,
 		const VkAllocationCallbacks* allocator, VkDebugUtilsMessengerEXT* debug_messenger)
@@ -23,7 +23,7 @@ namespace
 			return VK_ERROR_EXTENSION_NOT_PRESENT;
 	}
 
-	// Proxy Function
+	// cleanup
 	static void destroy_debug_utils_messenger_ext(VkInstance instance,
 		VkDebugUtilsMessengerEXT debug_messenger, const VkAllocationCallbacks* allocator)
 	{
@@ -40,7 +40,7 @@ Vulkan::~Vulkan()
 	cleanup();
 }
 
-void Vulkan::start()
+void Vulkan::run()
 {
 	initialize_window();
 	initialize_vulkan();
@@ -87,7 +87,7 @@ void Vulkan::create_instance(bool show_extensions)
 	// Tells the Vulkan driver which global extensions and validation layers we want to use
 	auto required_extensions = get_required_extensions();
 	const std::uint32_t glfw_extension_count { static_cast<std::uint32_t>(required_extensions.size()) };
-	const char**  glfw_extension_names { required_extensions.data() };
+	const char** glfw_extension_names { required_extensions.data() };
 
 	VkInstanceCreateInfo create_info {
 		.sType                   { VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO },
@@ -112,39 +112,8 @@ void Vulkan::create_instance(bool show_extensions)
 
 	// Retrieve a list of supported extensions before creating an instance
 	if (show_extensions)
-	{	
-		// Request the number of extensions
-		std::uint32_t extension_count {};
-		vkEnumerateInstanceExtensionProperties(nullptr, &extension_count, nullptr);
-
-		// Request the extension details
-		std::vector<VkExtensionProperties> extensions(extension_count);
-		vkEnumerateInstanceExtensionProperties(nullptr, &extension_count, extensions.data());
-
-		std::println("[Debug]: List of available extensions:");
-		for (const auto& extension : extensions)
-			std::println("\t- {}", extension.extensionName);
-
-		std::println("\n[Debug]: List of extensions needed by GLFW:");
-		for (std::uint32_t i { 0 }; i < glfw_extension_count; ++i)
-			std::println("\t- {}", glfw_extension_names[i]);
-
-		std::println("\n[Debug]: List of GLFW extensions found:");
-		for (std::uint32_t i { 0 }; i < glfw_extension_count; ++i)
-		{
-			const char* glfw_extension_name { glfw_extension_names[i] };
-
-			for (const auto& extension : extensions)
-			{
-				if (!std::strcmp(glfw_extension_name, extension.extensionName))
-				{
-					std::println("\t- {}", extension.extensionName);
-					break;
-				}
-			}
-		}
-
-		std::println("");
+	{
+		show_supported_extensions(glfw_extension_count, glfw_extension_names);
 	}
 
 	const VkResult result { vkCreateInstance(&create_info, nullptr, &m_instance) };
@@ -196,7 +165,7 @@ void Vulkan::pick_physical_device()
 
 void Vulkan::create_logical_device()
 {
-	const QueueFamilyIndices indices { find_queue_families(m_physical_device) };
+	const internal::QueueFamilyIndices indices { find_queue_families(m_physical_device) };
 
 	std::vector<VkDeviceQueueCreateInfo> queue_create_infos {};
 	const std::set<std::uint32_t> unique_queue_families { indices.m_graphics_family.value(),
@@ -234,19 +203,12 @@ void Vulkan::create_logical_device()
 		throw std::runtime_error("[Error]: Failed to create logical device.");
 
 	vkGetDeviceQueue(m_device, indices.m_graphics_family.value(), 0, &m_graphics_queue);
-	vkGetDeviceQueue(m_device, indices.m_present_family.value(), 0, &m_present_queue  );
+	vkGetDeviceQueue(m_device, indices.m_present_family.value() , 0, &m_present_queue );
 }
 
-bool Vulkan::is_device_suitable(VkPhysicalDevice device)
+internal::QueueFamilyIndices Vulkan::find_queue_families(VkPhysicalDevice device) const
 {
-	const QueueFamilyIndices indices { find_queue_families(device) };
-
-	return indices.is_complete();
-}
-
-QueueFamilyIndices Vulkan::find_queue_families(VkPhysicalDevice device)
-{
-	QueueFamilyIndices indices {};
+	internal::QueueFamilyIndices indices {};
 
 	std::uint32_t queue_family_count {};
 	vkGetPhysicalDeviceQueueFamilyProperties(device, &queue_family_count, nullptr);
@@ -273,6 +235,13 @@ QueueFamilyIndices Vulkan::find_queue_families(VkPhysicalDevice device)
 	}
 
 	return indices;
+}
+
+bool Vulkan::is_device_suitable(VkPhysicalDevice device)
+{
+	const internal::QueueFamilyIndices indices { find_queue_families(device) };
+
+	return indices.is_complete();
 }
 
 bool Vulkan::check_validation_layer_support()
@@ -341,6 +310,42 @@ VKAPI_ATTR VkBool32 VKAPI_CALL Vulkan::debug_callback(VkDebugUtilsMessageSeverit
 	std::cerr << "[Validation Layer]: " << callback_data->pMessage << '\n';
 
 	return VK_FALSE;
+}
+
+void Vulkan::show_supported_extensions(std::uint32_t glfw_extension_count, const char** glfw_extension_names)
+{
+	// Request the number of extensions
+	std::uint32_t extension_count {};
+	vkEnumerateInstanceExtensionProperties(nullptr, &extension_count, nullptr);
+
+	// Request the extension details
+	std::vector<VkExtensionProperties> extensions(extension_count);
+	vkEnumerateInstanceExtensionProperties(nullptr, &extension_count, extensions.data());
+
+	std::println("[Debug]: List of available extensions:");
+	for (const auto& extension : extensions)
+		std::println("\t- {}", extension.extensionName);
+
+	std::println("\n[Debug]: List of extensions needed by GLFW:");
+	for (std::uint32_t i { 0 }; i < glfw_extension_count; ++i)
+		std::println("\t- {}", glfw_extension_names[i]);
+
+	std::println("\n[Debug]: List of GLFW extensions found:");
+	for (std::uint32_t i { 0 }; i < glfw_extension_count; ++i)
+	{
+		const char* glfw_extension_name { glfw_extension_names[i] };
+
+		for (const auto& extension : extensions)
+		{
+			if (!std::strcmp(glfw_extension_name, extension.extensionName))
+			{
+				std::println("\t- {}", extension.extensionName);
+				break;
+			}
+		}
+	}
+
+	std::println("");
 }
 
 void Vulkan::main_loop()

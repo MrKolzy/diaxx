@@ -8,43 +8,50 @@
 #include <optional>
 #include <vector>
 
-struct QueueFamilyIndices
+namespace internal
 {
-    std::optional<std::uint32_t> m_graphics_family {};
-    std::optional<std::uint32_t> m_present_family  {};
+    struct QueueFamilyIndices
+    {
+        std::optional<std::uint32_t> m_graphics_family {};
+        std::optional<std::uint32_t> m_present_family  {};
 
-    bool is_complete() const { return m_graphics_family.has_value() && m_present_family.has_value(); }
-};
+        bool is_complete() const { return m_graphics_family.has_value() && m_present_family.has_value(); }
+    };
+}
 
 class Vulkan
 {
 public:
-    Vulkan() = default;
+    Vulkan () = default;
     ~Vulkan();
 
     // Delete copy constructor and copy assignment
-    Vulkan(const Vulkan&) = delete;
+    Vulkan(const Vulkan&)            = delete;
     Vulkan& operator=(const Vulkan&) = delete;
 
     // Delete move constructor and move assignment
-    Vulkan(Vulkan&&) = delete;
-    Vulkan& operator=(Vulkan&&) = delete;
+    Vulkan(Vulkan&&)                 = delete;
+    Vulkan& operator=(Vulkan&&)      = delete;
 
-    void start();
+    void run();
 
 private:
-    void initialize_window();
+    void initialize_window    ();
 
-    void initialize_vulkan();
-    void create_instance(bool show_extensions);
+    void initialize_vulkan    ();
+    void create_instance      (bool show_extensions);
     void setup_debug_messenger();
-    void create_surface();
-    void pick_physical_device();
+    void create_surface       ();
+    void pick_physical_device ();
     void create_logical_device();
 
-    bool is_device_suitable(VkPhysicalDevice device);
-    QueueFamilyIndices find_queue_families(VkPhysicalDevice device);
+    // create_logical_device
+    internal::QueueFamilyIndices find_queue_families(VkPhysicalDevice device) const;
 
+    // pick_physical_device
+    bool is_device_suitable(VkPhysicalDevice device);
+
+    // create_instance
     bool check_validation_layer_support();
     std::vector<const char*> get_required_extensions();
     void populate_debug_messenger_create_info(VkDebugUtilsMessengerCreateInfoEXT& create_info);  
@@ -52,6 +59,7 @@ private:
         VkDebugUtilsMessageSeverityFlagBitsEXT message_severity,
         VkDebugUtilsMessageTypeFlagsEXT message_type,
         const VkDebugUtilsMessengerCallbackDataEXT* callback_data, void* user_data);
+    void show_supported_extensions(std::uint32_t glfw_extension_count, const char** glfw_extension_names);
 
     void main_loop();
 
