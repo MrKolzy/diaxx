@@ -28,9 +28,10 @@ private:
     void initialize_vulkan();
     void create_instance(bool show_extensions);
     void setup_debug_messenger();
-    void populate_debug_messenger_create_info(VkDebugUtilsMessengerCreateInfoEXT& create_info);
+
     bool check_validation_layer_support();
     std::vector<const char*> get_required_extensions();
+    void populate_debug_messenger_create_info(VkDebugUtilsMessengerCreateInfoEXT& create_info);  
     static VKAPI_ATTR VkBool32 VKAPI_CALL debug_callback(
         VkDebugUtilsMessageSeverityFlagBitsEXT message_severity,
         VkDebugUtilsMessageTypeFlagsEXT message_type,
