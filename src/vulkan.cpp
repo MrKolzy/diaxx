@@ -8,6 +8,34 @@
 #include <stdexcept>
 #include <vector>
 
+namespace
+{
+	// Proxy Function
+	VkResult create_debug_utils_messenger_ext(VkInstance instance,
+		const VkDebugUtilsMessengerCreateInfoEXT* create_info,
+		const VkAllocationCallbacks* allocator, VkDebugUtilsMessengerEXT* debug_messenger)
+	{
+		const auto function { reinterpret_cast<PFN_vkCreateDebugUtilsMessengerEXT>(
+			vkGetInstanceProcAddr(instance, "vkCreateDebugUtilsMessengerEXT")) };
+
+		if (function != nullptr)
+			return function(instance, create_info, allocator, debug_messenger);
+		else
+			return VK_ERROR_EXTENSION_NOT_PRESENT;
+	}
+
+	// Proxy Function
+	void destroy_debug_utils_messenger_ext(VkInstance instance,
+		VkDebugUtilsMessengerEXT debug_messenger, const VkAllocationCallbacks* allocator)
+	{
+		const auto function { reinterpret_cast<PFN_vkDestroyDebugUtilsMessengerEXT>(
+			vkGetInstanceProcAddr(instance, "vkDestroyDebugUtilsMessengerEXT")) };
+
+		if (function != nullptr)
+			function(instance, debug_messenger, allocator);
+	}
+}
+
 Vulkan::~Vulkan()
 {
 	cleanup();
@@ -122,34 +150,6 @@ void Vulkan::create_instance(bool show_extensions)
 		throw std::runtime_error("[Error]: The instance could not be created.");
 }
 
-namespace
-{
-	// Proxy Function
-	VkResult create_debug_utils_messenger_ext(VkInstance instance,
-		const VkDebugUtilsMessengerCreateInfoEXT* create_info,
-		const VkAllocationCallbacks* allocator, VkDebugUtilsMessengerEXT* debug_messenger)
-	{
-		const auto function { reinterpret_cast<PFN_vkCreateDebugUtilsMessengerEXT>(
-			vkGetInstanceProcAddr(instance, "vkCreateDebugUtilsMessengerEXT")) };
-
-		if (function != nullptr)
-			return function(instance, create_info, allocator, debug_messenger);
-		else
-			return VK_ERROR_EXTENSION_NOT_PRESENT;
-	}
-
-	// Proxy Function
-	void destroy_debug_utils_messenger_ext(VkInstance instance,
-		VkDebugUtilsMessengerEXT debug_messenger, const VkAllocationCallbacks* allocator)
-	{
-		const auto function { reinterpret_cast<PFN_vkDestroyDebugUtilsMessengerEXT>(
-			vkGetInstanceProcAddr(instance, "vkDestroyDebugUtilsMessengerEXT")) };
-
-		if (function != nullptr)
-			function(instance, debug_messenger, allocator);
-	}
-}
-
 void Vulkan::setup_debug_messenger()
 {
 	if (!constants::g_enable_validation_layers)
@@ -158,23 +158,12 @@ void Vulkan::setup_debug_messenger()
 	VkDebugUtilsMessengerCreateInfoEXT create_info {};
 	populate_debug_messenger_create_info(create_info);
 
-	if (create_debug_utils_messenger_ext(m_instance, &create_info, nullptr, &m_debug_messenger)	!= VK_SUCCESS)
+	if (create_debug_utils_messenger_ext(m_instance, &create_info, nullptr, &m_debug_messenger) != VK_SUCCESS)
 		throw std::runtime_error("[Error]: Failed to set up debug messenger.");
 }
 
-void Vulkan::populate_debug_messenger_create_info(VkDebugUtilsMessengerCreateInfoEXT& create_info)
+void Vulkan::pick_physical_device()
 {
-	create_info = {
-		.sType           { VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT },
-		.messageSeverity { VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT |
-			VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT |
-			VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT                          },
-		.messageType     { VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT |
-			VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT |
-			VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT                        },
-		.pfnUserCallback { debug_callback                                          },
-		.pUserData       { nullptr                                                 }
-	};
 }
 
 bool Vulkan::check_validation_layer_support()
@@ -208,7 +197,7 @@ bool Vulkan::check_validation_layer_support()
 std::vector<const char*> Vulkan::get_required_extensions()
 {
 	std::uint32_t glfw_extension_count {};
-	const char**  glfw_extensions      { glfwGetRequiredInstanceExtensions(&glfw_extension_count) };
+	const char** glfw_extensions { glfwGetRequiredInstanceExtensions(&glfw_extension_count) };
 
 	if (!glfw_extensions)
 		throw std::runtime_error("[Error]: Failed to get required GLFW extensions.");
@@ -219,6 +208,21 @@ std::vector<const char*> Vulkan::get_required_extensions()
 		extensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
 
 	return extensions;
+}
+
+void Vulkan::populate_debug_messenger_create_info(VkDebugUtilsMessengerCreateInfoEXT& create_info)
+{
+	create_info = {
+		.sType           { VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT },
+		.messageSeverity { VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT |
+			VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT |
+			VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT                          },
+		.messageType     { VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT |
+			VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT |
+			VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT                        },
+		.pfnUserCallback { debug_callback                                          },
+		.pUserData       { nullptr                                                 }
+	};
 }
 
 VKAPI_ATTR VkBool32 VKAPI_CALL Vulkan::debug_callback(VkDebugUtilsMessageSeverityFlagBitsEXT,

@@ -28,6 +28,7 @@ private:
     void initialize_vulkan();
     void create_instance(bool show_extensions);
     void setup_debug_messenger();
+    void pick_physical_device();
 
     bool check_validation_layer_support();
     std::vector<const char*> get_required_extensions();
