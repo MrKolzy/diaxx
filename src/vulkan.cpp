@@ -215,6 +215,12 @@ void Vulkan::create_swap_chain()
 {
 	const internal::SwapChainSupportDetails swap_chain_support { query_swap_chain_support(m_physical_device) };
 
+	if (swap_chain_support.m_formats.empty())
+		throw std::runtime_error("[Error]: No supported surface formats found.");
+
+	if (swap_chain_support.m_present_modes.empty())
+		throw std::runtime_error("[Error]: No supported present modes found.");
+
 	const VkSurfaceFormatKHR surface_format { choose_swap_surface_format(swap_chain_support.m_formats)     };
 	const VkPresentModeKHR   present_mode   { choose_swap_present_mode(swap_chain_support.m_present_modes) };
 	const VkExtent2D         extent         { choose_swap_extent(swap_chain_support.m_capabilities)        };
