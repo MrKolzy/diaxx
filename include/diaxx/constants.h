@@ -1,5 +1,7 @@
 #pragma once
 
+#include <vulkan/vulkan_core.h>
+
 #include <array>
 
 namespace constants
@@ -16,4 +18,6 @@ namespace constants
 		"VK_LAYER_KHRONOS_validation" };
 	inline constexpr char g_application_name[] { "Diaxx"        };
 	inline constexpr char g_engine_name[]      { "Diaxx Engine" };
+	inline constexpr std::array<const char*, 1> g_device_extensions {
+		VK_KHR_SWAPCHAIN_EXTENSION_NAME };
 }
