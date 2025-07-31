@@ -70,6 +70,7 @@ void Vulkan::initialize_vulkan()
 	create_surface();
 	pick_physical_device();
 	create_logical_device();
+	create_swap_chain();
 }
 
 void Vulkan::create_instance(bool show_extensions)
@@ -225,18 +226,19 @@ void Vulkan::create_swap_chain()
 		image_count = { swap_chain_support.m_capabilities.maxImageCount };
 
 	VkSwapchainCreateInfoKHR create_info {
-		.sType            { VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR },
-		.surface          { m_surface                                   },
-		.minImageCount    { image_count                                 },
-		.imageFormat      { surface_format.format                       },
-		.imageColorSpace  { surface_format.colorSpace                   },
-		.imageExtent      { extent                                      },
-		.imageArrayLayers { 1                                           },
-		.imageUsage       { VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT         },
-		.compositeAlpha   { VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR           },
-		.presentMode      { present_mode                                },
-		.clipped          { VK_TRUE                                     },
-		.oldSwapchain     { VK_NULL_HANDLE                              }
+		.sType            { VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR        },
+		.surface          { m_surface                                          },
+		.minImageCount    { image_count                                        },
+		.imageFormat      { surface_format.format                              },
+		.imageColorSpace  { surface_format.colorSpace                          },
+		.imageExtent      { extent                                             },
+		.imageArrayLayers { 1                                                  },
+		.imageUsage       { VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT                },
+		.preTransform     { swap_chain_support.m_capabilities.currentTransform },
+		.compositeAlpha   { VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR                  },
+		.presentMode      { present_mode                                       },
+		.clipped          { VK_TRUE                                            },
+		.oldSwapchain     { VK_NULL_HANDLE                                     }
 	};
 
 	const internal::QueueFamilyIndices indices { find_queue_families(m_physical_device) };
