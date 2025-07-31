@@ -43,16 +43,17 @@ public:
     void run();
 
 private:
-    void initialize_window    ();
+    void initialize_window       ();
 
-    void initialize_vulkan    ();
-    void create_instance      (bool show_extensions);
-    void setup_debug_messenger();
-    void create_surface       ();
-    void pick_physical_device ();
-    void create_logical_device();
-    void create_swap_chain    ();
-    void create_image_views   ();
+    void initialize_vulkan       ();
+    void create_instance         (bool show_extensions);
+    void setup_debug_messenger   ();
+    void create_surface          ();
+    void pick_physical_device    ();
+    void create_logical_device   ();
+    void create_swap_chain       ();
+    void create_image_views      ();
+    void create_graphics_pipeline();
 
     // create_swap_chain
     internal::SwapChainSupportDetails query_swap_chain_support(VkPhysicalDevice device) const;

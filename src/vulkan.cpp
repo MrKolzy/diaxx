@@ -72,6 +72,7 @@ void Vulkan::initialize_vulkan()
 	create_logical_device();
 	create_swap_chain();
 	create_image_views();
+	create_graphics_pipeline();
 }
 
 void Vulkan::create_instance(bool show_extensions)
@@ -303,6 +304,10 @@ void Vulkan::create_image_views()
 		if (vkCreateImageView(m_device, &create_info, nullptr, &m_swap_chain_image_views[i]) != VK_SUCCESS)
 			throw std::runtime_error("[Error]: Failed to create image views.");
 	}
+}
+
+void Vulkan::create_graphics_pipeline()
+{
 }
 
 internal::SwapChainSupportDetails Vulkan::query_swap_chain_support(VkPhysicalDevice device) const
