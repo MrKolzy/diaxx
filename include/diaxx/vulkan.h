@@ -52,6 +52,7 @@ private:
     void pick_physical_device ();
     void create_logical_device();
     void create_swap_chain    ();
+    void create_image_views   ();
 
     // create_swap_chain
     internal::SwapChainSupportDetails query_swap_chain_support(VkPhysicalDevice device) const;
@@ -92,4 +93,5 @@ private:
     std::vector<VkImage>     m_swap_chain_images       {};
     VkFormat                 m_swap_chain_image_format {};
     VkExtent2D               m_swap_chain_extent       {};
+    std::vector<VkImageView> m_swap_chain_image_views  {};
 };
