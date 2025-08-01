@@ -57,6 +57,11 @@ private:
     void create_render_pass      ();
     void create_graphics_pipeline();
     void create_frame_buffers    ();
+    void create_command_pool     ();
+    void create_command_buffer   ();
+
+    // draw_frame
+    void record_command_buffer(VkCommandBuffer command_buffer, std::uint32_t image_index) const;
 
     // create_graphics_pipeline
     static std::vector<char> read_file(const std::string& file_name);
@@ -106,4 +111,6 @@ private:
     VkRenderPass               m_render_pass              {};
     VkPipeline                 m_graphics_pipeline        {};
     std::vector<VkFramebuffer> m_swap_chain_frame_buffers {};
+    VkCommandPool              m_command_pool             {};
+    VkCommandBuffer            m_command_buffer           {};
 };
