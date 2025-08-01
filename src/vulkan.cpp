@@ -2,6 +2,7 @@
 #include "diaxx/vulkan.h"
 
 #include <algorithm>
+#include <cstddef>
 #include <cstring>
 #include <fstream>
 #include <iostream>
@@ -74,6 +75,7 @@ void Vulkan::initialize_vulkan()
 	create_image_views();
 	create_render_pass();
 	create_graphics_pipeline();
+	create_frame_buffers();
 }
 
 void Vulkan::create_instance(bool show_extensions)
@@ -497,6 +499,27 @@ void Vulkan::create_graphics_pipeline()
 	vkDestroyShaderModule(m_device, vert_shader_module, nullptr);
 }
 
+void Vulkan::create_frame_buffers()
+{
+	m_swap_chain_frame_buffers.resize(m_swap_chain_image_views.size());
+
+	for (std::size_t i {}; i < m_swap_chain_image_views.size(); ++i)
+	{
+		const VkFramebufferCreateInfo frame_buffer_info {
+			.sType           { VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO },
+			.renderPass      { m_render_pass                             },
+			.attachmentCount { 1                                         },
+			.pAttachments    { &m_swap_chain_image_views[i]              },
+			.width           { m_swap_chain_extent.width                 },
+			.height          { m_swap_chain_extent.height                },
+			.layers          { 1                                         }
+		};
+
+		if (vkCreateFramebuffer(m_device, &frame_buffer_info, nullptr, &m_swap_chain_frame_buffers[i]) != VK_SUCCESS)
+			throw std::runtime_error("[Error]: Failed to create framebuffer.");
+	}
+}
+
 std::vector<char> Vulkan::read_file(const std::string& file_name)
 {
 	std::ifstream file(file_name, std::ios::ate | std::ios::binary);
@@ -775,6 +798,13 @@ void Vulkan::main_loop()
 
 void Vulkan::cleanup()
 {
+	for (const auto frame_buffer : m_swap_chain_frame_buffers)
+	{
+		if (frame_buffer)
+			vkDestroyFramebuffer(m_device, frame_buffer, nullptr);
+	}
+	m_swap_chain_frame_buffers.clear();
+
 	if (m_graphics_pipeline)
 	{
 		vkDestroyPipeline(m_device, m_graphics_pipeline, nullptr);
@@ -793,7 +823,8 @@ void Vulkan::cleanup()
 		m_render_pass = nullptr;
 	}
 
-	for (const auto image_view : m_swap_chain_image_views) {
+	for (const auto image_view : m_swap_chain_image_views)
+	{
 		if (image_view)
 			vkDestroyImageView(m_device, image_view, nullptr);
 	}

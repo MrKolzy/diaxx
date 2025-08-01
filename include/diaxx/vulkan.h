@@ -56,6 +56,7 @@ private:
     void create_image_views      ();
     void create_render_pass      ();
     void create_graphics_pipeline();
+    void create_frame_buffers    ();
 
     // create_graphics_pipeline
     static std::vector<char> read_file(const std::string& file_name);
@@ -88,20 +89,21 @@ private:
 
     void cleanup();
 
-    GLFWwindow*              m_window                  {};
-    VkInstance               m_instance                {};
-    VkDebugUtilsMessengerEXT m_debug_messenger         {};
-    VkPhysicalDevice         m_physical_device         {};
-    VkDevice                 m_device                  {};
-    VkQueue                  m_graphics_queue          {};
-    VkSurfaceKHR             m_surface                 {};
-    VkQueue                  m_present_queue           {};
-    VkSwapchainKHR           m_swap_chain              {};
-    std::vector<VkImage>     m_swap_chain_images       {};
-    VkFormat                 m_swap_chain_image_format {};
-    VkExtent2D               m_swap_chain_extent       {};
-    std::vector<VkImageView> m_swap_chain_image_views  {};
-    VkPipelineLayout         m_pipeline_layout         {};
-    VkRenderPass             m_render_pass             {};
-    VkPipeline               m_graphics_pipeline       {};
+    GLFWwindow*                m_window                   {};
+    VkInstance                 m_instance                 {};
+    VkDebugUtilsMessengerEXT   m_debug_messenger          {};
+    VkPhysicalDevice           m_physical_device          {};
+    VkDevice                   m_device                   {};
+    VkQueue                    m_graphics_queue           {};
+    VkSurfaceKHR               m_surface                  {};
+    VkQueue                    m_present_queue            {};
+    VkSwapchainKHR             m_swap_chain               {};
+    std::vector<VkImage>       m_swap_chain_images        {};
+    VkFormat                   m_swap_chain_image_format  {};
+    VkExtent2D                 m_swap_chain_extent        {};
+    std::vector<VkImageView>   m_swap_chain_image_views   {};
+    VkPipelineLayout           m_pipeline_layout          {};
+    VkRenderPass               m_render_pass              {};
+    VkPipeline                 m_graphics_pipeline        {};
+    std::vector<VkFramebuffer> m_swap_chain_frame_buffers {};
 };
