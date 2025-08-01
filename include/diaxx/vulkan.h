@@ -58,7 +58,7 @@ private:
     void create_graphics_pipeline();
     void create_frame_buffers    ();
     void create_command_pool     ();
-    void create_command_buffer   ();
+    void create_command_buffers  ();
     void create_sync_objects     ();
 
     // create_graphics_pipeline
@@ -96,26 +96,27 @@ private:
 
     void cleanup();
 
-    GLFWwindow*                m_window                    {};
-    VkInstance                 m_instance                  {};
-    VkDebugUtilsMessengerEXT   m_debug_messenger           {};
-    VkPhysicalDevice           m_physical_device           {};
-    VkDevice                   m_device                    {};
-    VkQueue                    m_graphics_queue            {};
-    VkSurfaceKHR               m_surface                   {};
-    VkQueue                    m_present_queue             {};
-    VkSwapchainKHR             m_swap_chain                {};
-    std::vector<VkImage>       m_swap_chain_images         {};
-    VkFormat                   m_swap_chain_image_format   {};
-    VkExtent2D                 m_swap_chain_extent         {};
-    std::vector<VkImageView>   m_swap_chain_image_views    {};
-    VkPipelineLayout           m_pipeline_layout           {};
-    VkRenderPass               m_render_pass               {};
-    VkPipeline                 m_graphics_pipeline         {};
-    std::vector<VkFramebuffer> m_swap_chain_frame_buffers  {};
-    VkCommandPool              m_command_pool              {};
-    VkCommandBuffer            m_command_buffer            {};
-    VkSemaphore                m_image_available_semaphore {};
-    VkSemaphore                m_render_finished_semaphore {};
-    VkFence                    m_in_flight_fence           {};
+    GLFWwindow*                  m_window                     {};
+    VkInstance                   m_instance                   {};
+    VkDebugUtilsMessengerEXT     m_debug_messenger            {};
+    VkPhysicalDevice             m_physical_device            {};
+    VkDevice                     m_device                     {};
+    VkQueue                      m_graphics_queue             {};
+    VkSurfaceKHR                 m_surface                    {};
+    VkQueue                      m_present_queue              {};
+    VkSwapchainKHR               m_swap_chain                 {};
+    std::vector<VkImage>         m_swap_chain_images          {};
+    VkFormat                     m_swap_chain_image_format    {};
+    VkExtent2D                   m_swap_chain_extent          {};
+    std::vector<VkImageView>     m_swap_chain_image_views     {};
+    VkPipelineLayout             m_pipeline_layout            {};
+    VkRenderPass                 m_render_pass                {};
+    VkPipeline                   m_graphics_pipeline          {};
+    std::vector<VkFramebuffer>   m_swap_chain_frame_buffers   {};
+    VkCommandPool                m_command_pool               {};
+    std::vector<VkCommandBuffer> m_command_buffers            {};
+    std::vector<VkSemaphore>     m_image_available_semaphores {};
+    std::vector<VkSemaphore>     m_render_finished_semaphores {};
+    std::vector<VkFence>         m_in_flight_fences           {};
+    std::uint32_t                m_current_frame              {};
 };
