@@ -72,6 +72,7 @@ void Vulkan::initialize_vulkan()
 	create_logical_device();
 	create_swap_chain();
 	create_image_views();
+	create_render_pass();
 	create_graphics_pipeline();
 }
 
@@ -304,6 +305,42 @@ void Vulkan::create_image_views()
 		if (vkCreateImageView(m_device, &create_info, nullptr, &m_swap_chain_image_views[i]) != VK_SUCCESS)
 			throw std::runtime_error("[Error]: Failed to create image views.");
 	}
+}
+
+void Vulkan::create_render_pass()
+{
+	const VkAttachmentDescription color_attachment {
+		.format         { m_swap_chain_image_format        },
+		.samples        { VK_SAMPLE_COUNT_1_BIT            },
+		.loadOp         { VK_ATTACHMENT_LOAD_OP_CLEAR      },
+		.storeOp        { VK_ATTACHMENT_STORE_OP_STORE     },
+		.stencilLoadOp  { VK_ATTACHMENT_LOAD_OP_DONT_CARE  },
+		.stencilStoreOp { VK_ATTACHMENT_STORE_OP_DONT_CARE },
+		.initialLayout  { VK_IMAGE_LAYOUT_UNDEFINED        },
+		.finalLayout    { VK_IMAGE_LAYOUT_PRESENT_SRC_KHR  }
+	};
+
+	const VkAttachmentReference color_attachment_reference {
+		.attachment { 0                                        },
+		.layout     { VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL }
+	};
+
+	const VkSubpassDescription subpass {
+		.pipelineBindPoint    { VK_PIPELINE_BIND_POINT_GRAPHICS },
+		.colorAttachmentCount { 1                               },
+		.pColorAttachments    { &color_attachment_reference     }
+	};
+
+	const VkRenderPassCreateInfo render_pass_info {
+		.sType           { VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO },
+		.attachmentCount { 1                                         },
+		.pAttachments    { &color_attachment                         },
+		.subpassCount    { 1                                         },
+		.pSubpasses      { &subpass                                  }
+	};
+
+	if (vkCreateRenderPass(m_device, &render_pass_info, nullptr, &m_render_pass) != VK_SUCCESS)
+		throw std::runtime_error("[Error]: Failed to create render pass.");
 }
 
 void Vulkan::create_graphics_pipeline()
@@ -719,6 +756,12 @@ void Vulkan::cleanup()
 	{
 		vkDestroyPipelineLayout(m_device, m_pipeline_layout, nullptr);
 		m_pipeline_layout = nullptr;
+	}
+
+	if (m_render_pass)
+	{
+		vkDestroyRenderPass(m_device, m_render_pass, nullptr);
+		m_render_pass = nullptr;
 	}
 
 	for (const auto image_view : m_swap_chain_image_views) {
