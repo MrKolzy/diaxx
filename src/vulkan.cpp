@@ -78,6 +78,7 @@ void Vulkan::initialize_vulkan()
 	create_frame_buffers();
 	create_command_pool();
 	create_command_buffer();
+	create_sync_objects();
 }
 
 void Vulkan::create_instance(bool show_extensions)
@@ -335,12 +336,23 @@ void Vulkan::create_render_pass()
 		.pColorAttachments    { &color_attachment_reference     }
 	};
 
+	const VkSubpassDependency dependency {
+		.srcSubpass    { VK_SUBPASS_EXTERNAL                           },
+		.dstSubpass    { 0                                             },
+		.srcStageMask  { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT },
+		.dstStageMask  { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT },
+		.srcAccessMask { 0                                             },
+		.dstAccessMask { VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT          },
+	};
+
 	const VkRenderPassCreateInfo render_pass_info {
 		.sType           { VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO },
 		.attachmentCount { 1                                         },
 		.pAttachments    { &color_attachment                         },
 		.subpassCount    { 1                                         },
-		.pSubpasses      { &subpass                                  }
+		.pSubpasses      { &subpass                                  },
+		.dependencyCount { 1                                         },
+		.pDependencies   { &dependency                               }
 	};
 
 	if (vkCreateRenderPass(m_device, &render_pass_info, nullptr, &m_render_pass) != VK_SUCCESS)
@@ -549,52 +561,19 @@ void Vulkan::create_command_buffer()
 		throw std::runtime_error("[Error]: Failed to allocate command buffers.");
 }
 
-void Vulkan::record_command_buffer(VkCommandBuffer command_buffer, std::uint32_t image_index) const
+void Vulkan::create_sync_objects()
 {
-	const VkCommandBufferBeginInfo begin_info {
-		.sType            { VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO },
-		.flags            { 0                                           },
-		.pInheritanceInfo { nullptr                                     }
+	const VkSemaphoreCreateInfo semaphore_info { .sType { VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO } };
+
+	const VkFenceCreateInfo fence_info {
+		.sType { VK_STRUCTURE_TYPE_FENCE_CREATE_INFO },
+		.flags { VK_FENCE_CREATE_SIGNALED_BIT        }
 	};
 
-	if (vkBeginCommandBuffer(command_buffer, &begin_info) != VK_SUCCESS)
-		throw std::runtime_error("[Error]: Failed to begin recording command buffer.");
-
-	VkRenderPassBeginInfo render_pass_info {
-		.sType           { VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO },
-		.renderPass      { m_render_pass                            },
-		.framebuffer     { m_swap_chain_frame_buffers[image_index]  },
-		.clearValueCount { 1                                        },
-	};
-
-	render_pass_info.renderArea.offset = { 0, 0 };
-	render_pass_info.renderArea.extent = m_swap_chain_extent;
-
-	const VkClearValue clear_color { { {0.0f, 0.0f, 0.0f, 1.0f} } };
-	render_pass_info.pClearValues = &clear_color;
-
-	vkCmdBeginRenderPass(command_buffer, &render_pass_info, VK_SUBPASS_CONTENTS_INLINE);
-
-	vkCmdBindPipeline(command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_graphics_pipeline);
-
-	const VkViewport viewport {
-		.x        { 0.0f                                           },
-		.y        { 0.0f                                           },
-		.width    { static_cast<float>(m_swap_chain_extent.width)  },
-		.height   { static_cast<float>(m_swap_chain_extent.height) },
-		.minDepth { 0.0f                                           },
-		.maxDepth { 1.0f                                           },
-	};
-	vkCmdSetViewport(command_buffer, 0, 1, &viewport);
-
-	const VkRect2D scissor { .offset { 0, 0 }, .extent { m_swap_chain_extent } };
-	vkCmdSetScissor(command_buffer, 0, 1, &scissor);
-
-	vkCmdDraw(command_buffer, 3, 1, 0, 0);
-	vkCmdEndRenderPass(command_buffer);
-
-	if (vkEndCommandBuffer(command_buffer) != VK_SUCCESS)
-		throw std::runtime_error("[Error]: Failed to record command buffer.");
+	if (vkCreateSemaphore(m_device, &semaphore_info, nullptr, &m_image_available_semaphore) != VK_SUCCESS ||
+		vkCreateSemaphore(m_device, &semaphore_info, nullptr, &m_render_finished_semaphore) != VK_SUCCESS ||
+		vkCreateFence(m_device, &fence_info, nullptr, &m_in_flight_fence) != VK_SUCCESS)
+		throw std::runtime_error("[Error]: Failed to create semaphores.");
 }
 
 std::vector<char> Vulkan::read_file(const std::string& file_name)
@@ -870,11 +849,131 @@ void Vulkan::show_supported_extensions(std::uint32_t glfw_extension_count, const
 void Vulkan::main_loop()
 {
 	while (!glfwWindowShouldClose(m_window))
+	{
 		glfwPollEvents();
+		draw_frame();
+	}
+
+	vkDeviceWaitIdle(m_device);
+}
+
+void Vulkan::draw_frame()
+{
+	vkWaitForFences(m_device, 1, &m_in_flight_fence, VK_TRUE, UINT64_MAX);
+	vkResetFences(m_device, 1, &m_in_flight_fence);
+
+	std::uint32_t image_index {};
+	vkAcquireNextImageKHR(m_device, m_swap_chain, UINT64_MAX, m_image_available_semaphore,
+		VK_NULL_HANDLE, &image_index);
+
+	vkResetCommandBuffer(m_command_buffer, 0);
+	record_command_buffer(m_command_buffer, image_index);
+
+	VkSubmitInfo submit_info {
+		.sType                { VK_STRUCTURE_TYPE_SUBMIT_INFO },
+		.waitSemaphoreCount   { 1                             },
+		.commandBufferCount   { 1                             },
+		.pCommandBuffers      { &m_command_buffer             },
+		.signalSemaphoreCount { 1                             },
+	};
+
+	const VkSemaphore wait_semaphores[] { m_image_available_semaphore };
+	const VkPipelineStageFlags wait_stages[] { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
+
+	submit_info.pWaitSemaphores   = wait_semaphores;
+	submit_info.pWaitDstStageMask = wait_stages;
+
+	const VkSemaphore signal_semaphores[] { m_render_finished_semaphore };
+
+	submit_info.pSignalSemaphores = signal_semaphores;
+
+	if (vkQueueSubmit(m_graphics_queue, 1, &submit_info, m_in_flight_fence) != VK_SUCCESS)
+		throw std::runtime_error("[Error]: Failed to submit draw command buffer");
+
+	VkPresentInfoKHR present_info {
+		.sType              { VK_STRUCTURE_TYPE_PRESENT_INFO_KHR },
+		.waitSemaphoreCount { 1                                  },
+		.pWaitSemaphores    { signal_semaphores                  },
+		.swapchainCount     { 1                                  },
+		.pImageIndices      { &image_index                       },
+		.pResults           { nullptr                            }
+	};
+
+	const VkSwapchainKHR swap_chains[] { m_swap_chain };
+
+	present_info.pSwapchains = swap_chains;
+
+	vkQueuePresentKHR(m_present_queue, &present_info);
+}
+
+void Vulkan::record_command_buffer(VkCommandBuffer command_buffer, std::uint32_t image_index) const
+{
+	const VkCommandBufferBeginInfo begin_info {
+		.sType            { VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO },
+		.flags            { 0                                           },
+		.pInheritanceInfo { nullptr                                     }
+	};
+
+	if (vkBeginCommandBuffer(command_buffer, &begin_info) != VK_SUCCESS)
+		throw std::runtime_error("[Error]: Failed to begin recording command buffer.");
+
+	VkRenderPassBeginInfo render_pass_info {
+		.sType           { VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO },
+		.renderPass      { m_render_pass                            },
+		.framebuffer     { m_swap_chain_frame_buffers[image_index]  },
+		.clearValueCount { 1                                        },
+	};
+
+	render_pass_info.renderArea.offset = { 0, 0 };
+	render_pass_info.renderArea.extent = m_swap_chain_extent;
+
+	const VkClearValue clear_color { { { 0.0f, 0.0f, 0.0f, 1.0f } } };
+	render_pass_info.pClearValues = &clear_color;
+
+	vkCmdBeginRenderPass(command_buffer, &render_pass_info, VK_SUBPASS_CONTENTS_INLINE);
+
+	vkCmdBindPipeline(command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_graphics_pipeline);
+
+	const VkViewport viewport {
+		.x        { 0.0f                                           },
+		.y        { 0.0f                                           },
+		.width    { static_cast<float>(m_swap_chain_extent.width)  },
+		.height   { static_cast<float>(m_swap_chain_extent.height) },
+		.minDepth { 0.0f                                           },
+		.maxDepth { 1.0f                                           },
+	};
+	vkCmdSetViewport(command_buffer, 0, 1, &viewport);
+
+	const VkRect2D scissor { .offset { 0, 0 }, .extent { m_swap_chain_extent } };
+	vkCmdSetScissor(command_buffer, 0, 1, &scissor);
+
+	vkCmdDraw(command_buffer, 3, 1, 0, 0);
+	vkCmdEndRenderPass(command_buffer);
+
+	if (vkEndCommandBuffer(command_buffer) != VK_SUCCESS)
+		throw std::runtime_error("[Error]: Failed to record command buffer.");
 }
 
 void Vulkan::cleanup()
 {
+	if (m_image_available_semaphore)
+	{
+		vkDestroySemaphore(m_device, m_image_available_semaphore, nullptr);
+		m_image_available_semaphore = nullptr;
+	}
+
+	if (m_render_finished_semaphore)
+	{
+		vkDestroySemaphore(m_device, m_render_finished_semaphore, nullptr);
+		m_render_finished_semaphore = nullptr;
+	}
+
+	if (m_in_flight_fence)
+	{
+		vkDestroyFence(m_device, m_in_flight_fence, nullptr);
+		m_in_flight_fence = nullptr;
+	}
+
 	if (m_command_pool)
 	{
 		vkDestroyCommandPool(m_device, m_command_pool, nullptr);
