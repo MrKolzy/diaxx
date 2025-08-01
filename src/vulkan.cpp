@@ -3,12 +3,12 @@
 
 #include <algorithm>
 #include <cstring>
+#include <fstream>
 #include <iostream>
 #include <limits>
 #include <print>
 #include <set>
 #include <stdexcept>
-#include <string>
 
 namespace
 {
@@ -308,6 +308,64 @@ void Vulkan::create_image_views()
 
 void Vulkan::create_graphics_pipeline()
 {
+	const auto vert_shader_code { read_file("shaders/vert.spv") };
+	const auto frag_shader_code { read_file("shaders/frag.spv") };
+
+	const VkShaderModule vert_shader_module { create_shader_module(vert_shader_code) };
+	const VkShaderModule frag_shader_module { create_shader_module(frag_shader_code) };
+
+	const VkPipelineShaderStageCreateInfo vert_shaders_stage_info {
+		.sType  { VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO },
+		.stage  { VK_SHADER_STAGE_VERTEX_BIT                          },
+		.module { vert_shader_module                                  },
+		.pName  { "main"                                              }
+	};
+
+	const VkPipelineShaderStageCreateInfo frag_shaders_stage_info {
+		.sType  { VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO },
+		.stage  { VK_SHADER_STAGE_FRAGMENT_BIT                        },
+		.module { frag_shader_module                                  },
+		.pName  { "main"                                              }
+	};
+
+	const VkPipelineShaderStageCreateInfo shader_stages[] { vert_shaders_stage_info,
+		frag_shaders_stage_info };
+
+	vkDestroyShaderModule(m_device, frag_shader_module, nullptr);
+	vkDestroyShaderModule(m_device, vert_shader_module, nullptr);
+}
+
+std::vector<char> Vulkan::read_file(const std::string& file_name)
+{
+	std::ifstream file(file_name, std::ios::ate | std::ios::binary);
+
+	if (!file.is_open())
+		throw std::runtime_error("[Error]: Failed to open file.");
+
+	const std::size_t file_size { static_cast<std::size_t>(file.tellg()) };
+	std::vector<char> buffer(file_size);
+
+	file.seekg(0);
+	file.read(buffer.data(), static_cast<std::streamsize>(file_size));
+
+	file.close();
+
+	return buffer;
+}
+
+VkShaderModule Vulkan::create_shader_module(const std::vector<char>& code) const
+{
+	const VkShaderModuleCreateInfo create_info {
+		.sType    { VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO         },
+		.codeSize { code.size()                                         },
+		.pCode    { reinterpret_cast<const std::uint32_t*>(code.data()) }
+	};
+
+	VkShaderModule shader_module {};
+	if (vkCreateShaderModule(m_device, &create_info, nullptr, &shader_module) != VK_SUCCESS)
+		throw std::runtime_error("[Error]: Failed to create shader module");
+
+	return shader_module;
 }
 
 internal::SwapChainSupportDetails Vulkan::query_swap_chain_support(VkPhysicalDevice device) const

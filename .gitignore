@@ -1,8 +1,11 @@
 # Files
+compile.bat
 diaxx.sln
 diaxx.vcxproj
 diaxx.vcxproj.filters
 diaxx.vcxproj.user
+frag.spv
+vert.spv
 
 # Folders
 .vs/

@@ -6,6 +6,7 @@
 
 #include <cstdint>
 #include <optional>
+#include <string>
 #include <vector>
 
 namespace internal
@@ -54,6 +55,10 @@ private:
     void create_swap_chain       ();
     void create_image_views      ();
     void create_graphics_pipeline();
+
+    // create_graphics_pipeline
+    static std::vector<char> read_file(const std::string& file_name);
+    VkShaderModule create_shader_module(const std::vector<char>& code) const;
 
     // create_swap_chain
     internal::SwapChainSupportDetails query_swap_chain_support(VkPhysicalDevice device) const;
