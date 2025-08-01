@@ -20,5 +20,5 @@ namespace constants
 	inline constexpr char g_engine_name[]      { "Diaxx Engine" };
 	inline constexpr std::array<const char*, 1> g_device_extensions {
 		VK_KHR_SWAPCHAIN_EXTENSION_NAME };
-	inline constexpr int g_max_frames_in_flight { 3 };
+	inline constexpr int g_max_frames_in_flight { 2 };
 }
