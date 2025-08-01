@@ -103,4 +103,5 @@ private:
     std::vector<VkImageView> m_swap_chain_image_views  {};
     VkPipelineLayout         m_pipeline_layout         {};
     VkRenderPass             m_render_pass             {};
+    VkPipeline               m_graphics_pipeline       {};
 };

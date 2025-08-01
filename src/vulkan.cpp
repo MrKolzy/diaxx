@@ -470,6 +470,29 @@ void Vulkan::create_graphics_pipeline()
 	if (vkCreatePipelineLayout(m_device, &pipeline_layout_info, nullptr, &m_pipeline_layout) != VK_SUCCESS)
 		throw std::runtime_error("[Error]: Failed to create pipeline layout.");
 
+	const VkGraphicsPipelineCreateInfo pipeline_info {
+		.sType               { VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO },
+		.stageCount          { 2                                               },
+		.pStages             { shader_stages                                   },
+		.pVertexInputState   { &vertex_input_info                              },
+		.pInputAssemblyState { &input_assembly                                 },
+		.pViewportState      { &viewport_state                                 },
+		.pRasterizationState { &rasterizer                                     },
+		.pMultisampleState   { &multisampling                                  },
+		.pDepthStencilState  { nullptr                                         },
+		.pColorBlendState    { &color_blending                                 },
+		.pDynamicState       { &dynamic_state                                  },
+		.layout              { m_pipeline_layout                               },
+		.renderPass          { m_render_pass                                   },
+		.subpass             { 0                                               },
+		.basePipelineHandle  { VK_NULL_HANDLE                                  },
+		.basePipelineIndex   { -1                                              }
+	};
+
+	if (vkCreateGraphicsPipelines(m_device, VK_NULL_HANDLE, 1, &pipeline_info, nullptr,
+		&m_graphics_pipeline) != VK_SUCCESS)
+		throw std::runtime_error("[Error]: Failed to create graphics pipeline.");
+
 	vkDestroyShaderModule(m_device, frag_shader_module, nullptr);
 	vkDestroyShaderModule(m_device, vert_shader_module, nullptr);
 }
@@ -752,6 +775,12 @@ void Vulkan::main_loop()
 
 void Vulkan::cleanup()
 {
+	if (m_graphics_pipeline)
+	{
+		vkDestroyPipeline(m_device, m_graphics_pipeline, nullptr);
+		m_graphics_pipeline = nullptr;
+	}
+
 	if (m_pipeline_layout)
 	{
 		vkDestroyPipelineLayout(m_device, m_pipeline_layout, nullptr);
