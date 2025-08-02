@@ -566,7 +566,7 @@ void Vulkan::create_command_buffers()
 void Vulkan::create_sync_objects()
 {
 	m_image_available_semaphores.resize(constants::g_max_frames_in_flight);
-	m_render_finished_semaphores.resize(constants::g_max_frames_in_flight);
+	m_render_finished_semaphores.resize(m_swap_chain_images.size());
 	m_in_flight_fences.resize(constants::g_max_frames_in_flight);
 
 	const VkSemaphoreCreateInfo semaphore_info { .sType { VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO } };
@@ -581,6 +581,14 @@ void Vulkan::create_sync_objects()
 		if (vkCreateSemaphore(m_device, &semaphore_info, nullptr, &m_image_available_semaphores[i]) != VK_SUCCESS ||
 			vkCreateSemaphore(m_device, &semaphore_info, nullptr, &m_render_finished_semaphores[i]) != VK_SUCCESS ||
 			vkCreateFence(m_device, &fence_info, nullptr, &m_in_flight_fences[i]) != VK_SUCCESS)
+			throw std::runtime_error("[Error]: Failed to create synchronization objects for a frame.");
+	}
+
+	// Create one render finished semaphore per swapchain image
+	// This ensures that each image has its own semaphore, avoiding reuse while it's still in use by vkQueuePresentKHR
+	for (std::size_t i {}; i < m_swap_chain_images.size(); ++i)
+	{
+		if (vkCreateSemaphore(m_device, &semaphore_info, nullptr, &m_render_finished_semaphores[i]))
 			throw std::runtime_error("[Error]: Failed to create synchronization objects for a frame.");
 	}
 }
@@ -878,12 +886,15 @@ void Vulkan::draw_frame()
 	vkResetCommandBuffer(m_command_buffers[m_current_frame], 0);
 	record_command_buffer(m_command_buffers[m_current_frame], image_index);
 
+	const VkSemaphore signal_semaphores[] { m_render_finished_semaphores[image_index] };
+
 	VkSubmitInfo submit_info {
 		.sType                { VK_STRUCTURE_TYPE_SUBMIT_INFO       },
 		.waitSemaphoreCount   { 1                                   },
 		.commandBufferCount   { 1                                   },
 		.pCommandBuffers      { &m_command_buffers[m_current_frame] },
 		.signalSemaphoreCount { 1                                   },
+		.pSignalSemaphores    { signal_semaphores                   }
 	};
 
 	const VkSemaphore          wait_semaphores[] { m_image_available_semaphores[m_current_frame] };
@@ -891,10 +902,6 @@ void Vulkan::draw_frame()
 
 	submit_info.pWaitSemaphores   = wait_semaphores;
 	submit_info.pWaitDstStageMask = wait_stages;
-
-	const VkSemaphore signal_semaphores[] { m_render_finished_semaphores[m_current_frame] };
-
-	submit_info.pSignalSemaphores = signal_semaphores;
 
 	if (vkQueueSubmit(m_graphics_queue, 1, &submit_info, m_in_flight_fences[m_current_frame]) != VK_SUCCESS)
 		throw std::runtime_error("[Error]: Failed to submit draw command buffer");
