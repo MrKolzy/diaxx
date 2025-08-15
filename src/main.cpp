@@ -1,7 +1,5 @@
 #include "diaxx/vulkan.h"
 
-#include <iostream>
-
 int main()
 {
 	Diaxx::Vulkan vulkan {};
