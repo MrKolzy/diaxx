@@ -83,7 +83,7 @@ namespace diaxx
 	void Vulkan::print_extensions_and_layers(std::span<const char* const> required_extensions,
 		std::span<const vk::ExtensionProperties> vulkan_extensions,
 		std::span<const char* const> required_layers,
-		std::span<const vk::LayerProperties> vulkan_layers)
+		std::span<const vk::LayerProperties> vulkan_layers) const
 	{
 		std::println("[Debug]: Available Vulkan extensions:");
 		for (const auto& extension : vulkan_extensions)
@@ -105,7 +105,7 @@ namespace diaxx
 	void Vulkan::check_required_extensions_and_layers(std::span<const char* const> required_extensions,
 		std::span<const vk::ExtensionProperties> vulkan_extensions,
 		std::span<const char* const> required_layers,
-		std::span<const vk::LayerProperties> vulkan_layers)
+		std::span<const vk::LayerProperties> vulkan_layers) const
 	{
 		for (const auto& extension : required_extensions)
 		{
@@ -140,7 +140,7 @@ namespace diaxx
 		}
 	}
 
-	std::vector<const char*> Vulkan::get_required_extensions()
+	std::vector<const char*> get_required_extensions()
 	{
 		std::uint32_t required_extension_count {};
 		const auto required_extensions { glfwGetRequiredInstanceExtensions(&required_extension_count) };
@@ -152,7 +152,7 @@ namespace diaxx
 		return extensions;
 	}
 
-	std::vector<const char*> Vulkan::get_required_layers()
+	std::vector<const char*> get_required_layers()
 	{
 		std::vector<const char*> required_layers {};
 		if (constants::g_enable_validation_layers)
