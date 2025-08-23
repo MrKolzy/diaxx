@@ -1,8 +1,23 @@
-#include <print>
+#include "diaxx/vulkan.hpp"
+
+#include <cstdlib>
+#include <exception>
+#include <iostream>
 
 int main()
 {
-	std::print("Hello, world!");
+	diaxx::Vulkan vulkan {};
 
-	return 0;
+	try
+	{
+		vulkan.run();
+	}
+	catch (const std::exception& exception)
+	{
+		std::cerr << exception.what();
+
+		return EXIT_FAILURE;
+	}
+
+	return EXIT_SUCCESS;
 }
