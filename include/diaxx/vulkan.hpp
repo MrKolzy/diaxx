@@ -51,6 +51,7 @@ namespace diaxx
 			const vk::DebugUtilsMessengerCallbackDataEXT* callback_data, void* user_data);
 
 		void setup_debug_messenger(); // 2.2
+		void pick_physical_device(); // 2.3
 
 		void main_loop(); // 3.
 
@@ -58,5 +59,6 @@ namespace diaxx
 		vk::raii::Context m_context {};
 		vk::raii::Instance m_instance { nullptr };
 		vk::raii::DebugUtilsMessengerEXT m_debug_messenger { nullptr };
+		vk::raii::PhysicalDevice m_physical_device { nullptr };
 	};
 }

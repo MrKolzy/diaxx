@@ -43,6 +43,8 @@ namespace diaxx
 		create_instance();
 		// Enables Vulkan debug messages for validation
 		setup_debug_messenger();
+		// Select a suitable GPU (physical device) that supports the required Vulkan features
+		pick_physical_device();
 	}
 
 	void Vulkan::create_instance()
@@ -196,6 +198,50 @@ namespace diaxx
 		};
 
 		m_debug_messenger = m_instance.createDebugUtilsMessengerEXT(debug_utils_messenger);
+	}
+
+	void Vulkan::pick_physical_device()
+	{
+		const auto devices { m_instance.enumeratePhysicalDevices() };
+
+		const auto device_iterator { std::ranges::find_if(devices,
+			[&](const auto& device)
+			{
+				// Each family supports specific operations like graphics, compute, transfer...
+				const auto queue_families { device.getQueueFamilyProperties() };
+				bool is_suitable { device.getProperties().apiVersion >= VK_API_VERSION_1_3 };
+
+				// Find the first queue family that supports graphics commands
+				const auto qfp_iterator { std::ranges::find_if(queue_families,
+					[](const auto& qfp)
+					{
+						 return (qfp.queueFlags & vk::QueueFlagBits::eGraphics) !=
+							 static_cast<vk::QueueFlags>(0);
+					})};
+
+				is_suitable = is_suitable && (qfp_iterator != queue_families.end());
+				const auto extensions { device.enumerateDeviceExtensionProperties() };
+				bool found { true };
+
+				for (const auto& device_extension : constants::g_device_extensions)
+				{
+					const auto extension_iterator { std::ranges::find_if(extensions,
+						[device_extension](const auto& extension)
+						{
+							return std::string_view { extension.extensionName } == device_extension;
+						})};
+					found = found && (extension_iterator != extensions.end());
+				}
+
+				is_suitable = is_suitable && found;
+				if (is_suitable)
+					m_physical_device = device;
+
+				return is_suitable;
+			}) };
+
+		if (device_iterator == devices.end())
+			throw std::runtime_error("\n[Error]: No suitable GPU could be found.\n");
 	}
 
 	void Vulkan::main_loop()

@@ -13,4 +13,7 @@ namespace constants
 #else
 	inline constexpr bool g_enable_validation_layers { true };
 #endif
+	inline constexpr std::array<const char*, 4> g_device_extensions {
+		"VK_KHR_swapchain",	"VK_KHR_spirv_1_4", "VK_KHR_synchronization2",
+		"VK_KHR_create_renderpass2" };
 }
