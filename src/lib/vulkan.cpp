@@ -142,7 +142,7 @@ namespace diaxx
 		}
 	}
 
-	std::vector<const char*> get_required_extensions()
+	std::vector<const char*> Vulkan::get_required_extensions()
 	{
 		std::uint32_t required_extension_count {};
 		const auto required_extensions { glfwGetRequiredInstanceExtensions(&required_extension_count) };
@@ -154,7 +154,7 @@ namespace diaxx
 		return extensions;
 	}
 
-	std::vector<const char*> get_required_layers()
+	std::vector<const char*> Vulkan::get_required_layers()
 	{
 		std::vector<const char*> required_layers {};
 		if (constants::g_enable_validation_layers)
@@ -166,7 +166,7 @@ namespace diaxx
 		return required_layers;
 	}
 
-	VKAPI_ATTR vk::Bool32 VKAPI_CALL debug_callback(
+	VKAPI_ATTR vk::Bool32 VKAPI_CALL Vulkan::debug_callback(
 		vk::DebugUtilsMessageSeverityFlagBitsEXT,
 		vk::DebugUtilsMessageTypeFlagsEXT type,
 		const vk::DebugUtilsMessengerCallbackDataEXT* callback_data, void*)
@@ -194,7 +194,7 @@ namespace diaxx
 		constexpr vk::DebugUtilsMessengerCreateInfoEXT debug_utils_messenger {
 			.messageSeverity = severity_flags,
 			.messageType = message_type_flags,
-			.pfnUserCallback = &diaxx::debug_callback
+			.pfnUserCallback = &Vulkan::debug_callback
 		};
 
 		m_debug_messenger = m_instance.createDebugUtilsMessengerEXT(debug_utils_messenger);
@@ -223,6 +223,7 @@ namespace diaxx
 				const auto extensions { device.enumerateDeviceExtensionProperties() };
 				bool found { true };
 
+				// Features that the GPU must explicitly advertise and support
 				for (const auto& device_extension : constants::g_device_extensions)
 				{
 					const auto extension_iterator { std::ranges::find_if(extensions,
