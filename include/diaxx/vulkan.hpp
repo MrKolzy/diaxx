@@ -5,6 +5,7 @@
 #include <GLFW/glfw3.h>
 #include <vulkan/vulkan_raii.hpp>
 
+#include <cstdint>
 #include <span>
 #include <vector>
 
@@ -52,6 +53,7 @@ namespace diaxx
 
 		void setup_debug_messenger(); // 2.2
 		void pick_physical_device(); // 2.3
+		void create_logical_device(); // 2.4
 
 		void main_loop(); // 3.
 
@@ -60,5 +62,9 @@ namespace diaxx
 		vk::raii::Instance m_instance { nullptr };
 		vk::raii::DebugUtilsMessengerEXT m_debug_messenger { nullptr };
 		vk::raii::PhysicalDevice m_physical_device { nullptr };
+		vk::raii::Device m_device { nullptr };
+		std::uint32_t m_graphics_queue_family_index {};
+		vk::PhysicalDeviceFeatures m_device_features {};
+		vk::raii::Queue m_graphics_queue { nullptr };
 	};
 }

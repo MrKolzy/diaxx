@@ -2,7 +2,6 @@
 #include "diaxx/vulkan.hpp"
 
 #include <algorithm>
-#include <cstdint>
 #include <format>
 #include <iostream>
 #include <print>
@@ -45,6 +44,8 @@ namespace diaxx
 		setup_debug_messenger();
 		// Select a suitable GPU (physical device) that supports the required Vulkan features
 		pick_physical_device();
+		// Handle used to talk to the GPU
+		create_logical_device();
 	}
 
 	void Vulkan::create_instance()
@@ -216,10 +217,15 @@ namespace diaxx
 					[](const auto& qfp)
 					{
 						 return (qfp.queueFlags & vk::QueueFlagBits::eGraphics) !=
-							 static_cast<vk::QueueFlags>(0);
+							 vk::QueueFlags {};
 					})};
 
-				is_suitable = is_suitable && (qfp_iterator != queue_families.end());
+				if (qfp_iterator == queue_families.end())
+					return false;
+
+				const auto graphics_index { static_cast<std::uint32_t>(
+					std::distance(queue_families.begin(), qfp_iterator)) };
+
 				const auto extensions { device.enumerateDeviceExtensionProperties() };
 				bool found { true };
 
@@ -236,13 +242,46 @@ namespace diaxx
 
 				is_suitable = is_suitable && found;
 				if (is_suitable)
+				{
 					m_physical_device = device;
+					m_graphics_queue_family_index = graphics_index;
+				}
 
 				return is_suitable;
 			}) };
 
 		if (device_iterator == devices.end())
 			throw std::runtime_error("\n[Error]: No suitable GPU could be found.\n");
+	}
+
+	void Vulkan::create_logical_device()
+	{
+		const auto qfp { m_physical_device.getQueueFamilyProperties() };
+
+		constexpr float queue_priority {};
+		const vk::DeviceQueueCreateInfo device_queue_create_info {
+			.queueFamilyIndex = m_graphics_queue_family_index,
+			.queueCount = 1,
+			.pQueuePriorities = &queue_priority
+		};
+
+		const vk::StructureChain<vk::PhysicalDeviceFeatures2, vk::PhysicalDeviceVulkan13Features,
+			vk::PhysicalDeviceExtendedDynamicStateFeaturesEXT> feature_chain {
+				{},
+				{.dynamicRendering = true },
+				{.extendedDynamicState = true }
+		};
+
+		const vk::DeviceCreateInfo device_create_info {
+			.pNext = &feature_chain.get<vk::PhysicalDeviceFeatures2>(),
+			.queueCreateInfoCount = 1,
+			.pQueueCreateInfos = &device_queue_create_info,
+			.enabledExtensionCount = static_cast<std::uint32_t>(constants::g_device_extensions.size()),
+			.ppEnabledExtensionNames = constants::g_device_extensions.data()
+		};
+
+		m_device = vk::raii::Device(m_physical_device, device_create_info);
+		m_graphics_queue = vk::raii::Queue(m_device, m_graphics_queue_family_index, 0);
 	}
 
 	void Vulkan::main_loop()
