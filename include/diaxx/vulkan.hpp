@@ -11,11 +11,16 @@
 
 namespace diaxx
 {
+	struct GLFWContext
+	{
+		GLFWContext();
+		~GLFWContext() { glfwTerminate(); }
+	};
+
 	class Vulkan
 	{
 	public:
 		Vulkan() = default;
-		~Vulkan();
 
 		// Disable copy construction and assignment
 		Vulkan(const Vulkan&) = delete;
@@ -56,7 +61,10 @@ namespace diaxx
 
 		void main_loop(); // 3.
 
-		GLFWwindow* m_window {};
+		GLFWContext m_glfw {};
+		std::unique_ptr<GLFWwindow, decltype(&glfwDestroyWindow)> m_window {
+			nullptr, &glfwDestroyWindow };
+
 		vk::raii::Context m_context {};
 		vk::raii::Instance m_instance { nullptr };
 		vk::raii::DebugUtilsMessengerEXT m_debug_messenger { nullptr };
@@ -64,6 +72,6 @@ namespace diaxx
 		vk::raii::Device m_device { nullptr };
 		std::uint32_t m_graphics_queue_family_index {};
 		vk::PhysicalDeviceFeatures m_device_features {};
-		vk::raii::Queue m_graphics_queue { nullptr };
+		vk::raii::Queue m_graphics_queue { nullptr };	
 	};
 }

@@ -4,6 +4,7 @@
 #include <algorithm>
 #include <format>
 #include <iostream>
+#include <memory>
 #include <print>
 #include <ranges>
 #include <stdexcept>
@@ -11,12 +12,13 @@
 
 namespace diaxx
 {
-	Vulkan::~Vulkan()
+	GLFWContext::GLFWContext()
 	{
-		if (m_window)
-			glfwDestroyWindow(m_window);
+		glfwSetErrorCallback([](int code, const char* message) {
+			std::cerr << std::format("\n[Error]: GLFW {}, {}\n", code, message); });
 
-		glfwTerminate();
+		if (glfwInit() != GLFW_TRUE)
+			throw std::runtime_error("\n[Error]: GLFW could not be initialized.\n");
 	}
 
 	void Vulkan::run()
@@ -28,17 +30,11 @@ namespace diaxx
 
 	void Vulkan::initialize_window()
 	{
-		if (glfwInit() != GLFW_TRUE)
-			throw std::runtime_error("\n[Error]: GLFW could not be initialized.\n");
-
-		glfwSetErrorCallback([](int code, const char* message) {
-			std::cerr << std::format("\n[Error]: GLFW {}, {}\n", code, message); });
-
 		glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API); // Disable OpenGL
 		glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
 
-		m_window = glfwCreateWindow(constants::g_width, constants::g_height, "Diaxx",
-			nullptr, nullptr);
+		m_window.reset(glfwCreateWindow(constants::g_width, constants::g_height, "Diaxx",
+			nullptr, nullptr));
 
 		if (!m_window)
 			throw std::runtime_error("\n[Error]: The glfwCreateWindow function failed.\n");
@@ -283,7 +279,7 @@ namespace diaxx
 
 	void Vulkan::main_loop()
 	{
-		while (!glfwWindowShouldClose(m_window))
-			glfwPollEvents();
+		while (!glfwWindowShouldClose(m_window.get()))
+			glfwWaitEventsTimeout(1.0 / 60.0);
 	}
 }
