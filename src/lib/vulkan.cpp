@@ -13,7 +13,8 @@ namespace diaxx
 {
 	Vulkan::~Vulkan()
 	{
-		glfwDestroyWindow(m_window);
+		if (m_window)
+			glfwDestroyWindow(m_window);
 
 		glfwTerminate();
 	}
@@ -27,21 +28,26 @@ namespace diaxx
 
 	void Vulkan::initialize_window()
 	{
-		glfwInit();
+		if (glfwInit() != GLFW_TRUE)
+			throw std::runtime_error("\n[Error]: GLFW could not be initialized.\n");
+
+		glfwSetErrorCallback([](int code, const char* message) {
+			std::cerr << std::format("\n[Error]: GLFW {}, {}\n", code, message); });
 
 		glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API); // Disable OpenGL
 		glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
 
 		m_window = glfwCreateWindow(constants::g_width, constants::g_height, "Diaxx",
 			nullptr, nullptr);
+
+		if (!m_window)
+			throw std::runtime_error("\n[Error]: The glfwCreateWindow function failed.\n");
 	}
 
 	void Vulkan::initialize_vulkan()
 	{
 		// Enables communication between the application and Vulkan
 		create_instance();
-		// Enables Vulkan debug messages for validation
-		setup_debug_messenger();
 		// Select a suitable GPU (physical device) that supports the required Vulkan features
 		pick_physical_device();
 		// Handle used to talk to the GPU
@@ -71,8 +77,21 @@ namespace diaxx
 			std::span { vulkan_extensions }, std::span { required_layers },
 			std::span { vulkan_layers });
 
+		vk::DebugUtilsMessengerCreateInfoEXT debug_utils_messenger {};
+		void* p_next {};
+		if (constants::g_enable_validation_layers)
+		{
+			debug_utils_messenger = vk::DebugUtilsMessengerCreateInfoEXT {
+				.messageSeverity = constants::severity_flags,
+				.messageType = constants::message_type_flags,
+				.pfnUserCallback = &Vulkan::debug_callback
+			};
+			p_next = &debug_utils_messenger;
+		}
+
 		// Structure with the information Vulkan needs
 		const vk::InstanceCreateInfo create_info {
+			.pNext = p_next,
 			.pApplicationInfo = &application_info,
 			.enabledLayerCount = static_cast<std::uint32_t>(required_layers.size()),
 			.ppEnabledLayerNames = required_layers.data(),
@@ -81,6 +100,10 @@ namespace diaxx
 		};
 
 		m_instance = vk::raii::Instance(m_context, create_info);
+
+		// Enables Vulkan debug messages for validation
+		if (constants::g_enable_validation_layers)
+			m_debug_messenger = m_instance.createDebugUtilsMessengerEXT(debug_utils_messenger);
 	}
 
 	void Vulkan::print_extensions_and_layers(std::span<const char* const> required_extensions,
@@ -169,36 +192,12 @@ namespace diaxx
 
 	VKAPI_ATTR vk::Bool32 VKAPI_CALL Vulkan::debug_callback(
 		vk::DebugUtilsMessageSeverityFlagBitsEXT,
-		vk::DebugUtilsMessageTypeFlagsEXT type,
+		vk::DebugUtilsMessageTypeFlagsEXT,
 		const vk::DebugUtilsMessengerCallbackDataEXT* callback_data, void*)
 	{
-		std::cerr << std::format("\n[Debug]: Validation layer:\n\t- Type: {}"
-			"\n\t - Message: {}\n", vk::to_string(type), callback_data->pMessage);
+		std::cerr << std::format("\n[Debug]: {}", callback_data->pMessage);
 
 		return vk::False;
-	}
-
-	void Vulkan::setup_debug_messenger()
-	{
-		if (!constants::g_enable_validation_layers) return;
-
-		constexpr vk::DebugUtilsMessageSeverityFlagsEXT severity_flags(
-			vk::DebugUtilsMessageSeverityFlagBitsEXT::eVerbose |
-			vk::DebugUtilsMessageSeverityFlagBitsEXT::eWarning |
-			vk::DebugUtilsMessageSeverityFlagBitsEXT::eError);
-
-		constexpr vk::DebugUtilsMessageTypeFlagsEXT message_type_flags(
-			vk::DebugUtilsMessageTypeFlagBitsEXT::eGeneral |
-			vk::DebugUtilsMessageTypeFlagBitsEXT::ePerformance |
-			vk::DebugUtilsMessageTypeFlagBitsEXT::eValidation);
-
-		constexpr vk::DebugUtilsMessengerCreateInfoEXT debug_utils_messenger {
-			.messageSeverity = severity_flags,
-			.messageType = message_type_flags,
-			.pfnUserCallback = &Vulkan::debug_callback
-		};
-
-		m_debug_messenger = m_instance.createDebugUtilsMessengerEXT(debug_utils_messenger);
 	}
 
 	void Vulkan::pick_physical_device()
@@ -256,9 +255,7 @@ namespace diaxx
 
 	void Vulkan::create_logical_device()
 	{
-		const auto qfp { m_physical_device.getQueueFamilyProperties() };
-
-		constexpr float queue_priority {};
+		constexpr float queue_priority { 1.0f };
 		const vk::DeviceQueueCreateInfo device_queue_create_info {
 			.queueFamilyIndex = m_graphics_queue_family_index,
 			.queueCount = 1,

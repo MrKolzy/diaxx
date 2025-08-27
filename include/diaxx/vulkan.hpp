@@ -43,17 +43,16 @@ namespace diaxx
 			std::span<const char* const> required_layers,
 			std::span<const vk::LayerProperties> vulkan_layers) const;
 
-		static std::vector<const char*> get_required_extensions();
-		static std::vector<const char*> get_required_layers();
+		[[nodiscard]] static std::vector<const char*> get_required_extensions();
+		[[nodiscard]] static std::vector<const char*> get_required_layers();
 
-		static VKAPI_ATTR vk::Bool32 VKAPI_CALL debug_callback(
+		[[nodiscard]] static VKAPI_ATTR vk::Bool32 VKAPI_CALL debug_callback(
 			vk::DebugUtilsMessageSeverityFlagBitsEXT severity,
 			vk::DebugUtilsMessageTypeFlagsEXT type,
 			const vk::DebugUtilsMessengerCallbackDataEXT* callback_data, void* user_data);
 
-		void setup_debug_messenger(); // 2.2
-		void pick_physical_device(); // 2.3
-		void create_logical_device(); // 2.4
+		void pick_physical_device(); // 2.2
+		void create_logical_device(); // 2.3
 
 		void main_loop(); // 3.
 
