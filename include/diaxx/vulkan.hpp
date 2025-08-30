@@ -63,9 +63,13 @@ namespace diaxx
 
 		vk::SurfaceFormatKHR choose_swap_surface_format(
 			const std::vector<vk::SurfaceFormatKHR>& available_formats);
+
 		vk::PresentModeKHR choose_swap_present_mode(
 			const std::vector<vk::PresentModeKHR>& available_present_modes);
+
 		vk::Extent2D choose_swap_extent(const vk::SurfaceCapabilitiesKHR& capabilities);
+
+		void create_image_views(); // 2.6
 
 		void main_loop(); // 3.
 
@@ -88,5 +92,6 @@ namespace diaxx
 		std::vector<vk::Image> m_swap_chain_images {};
 		vk::Format m_swap_chain_image_format {};
 		vk::Extent2D m_swap_chain_extent {};
+		std::vector<vk::raii::ImageView> m_swap_chain_image_views {};
 	};
 }

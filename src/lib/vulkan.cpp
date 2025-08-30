@@ -35,8 +35,7 @@ namespace diaxx
 		glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API); // Disable OpenGL
 		glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
 
-		m_window.reset(glfwCreateWindow(constants::g_width, constants::g_height, "Diaxx",
-			nullptr, nullptr));
+		m_window.reset(glfwCreateWindow(constants::g_width, constants::g_height, "Diaxx", nullptr, nullptr));
 
 		if (!m_window)
 			throw std::runtime_error("\n[Error]: The glfwCreateWindow function failed.\n");
@@ -54,6 +53,8 @@ namespace diaxx
 		create_logical_device();
 		// Queue of images that Vulkan will render and present on the window surface
 		create_swap_chain();
+		// Prepares the swap chain images so the GPU can actually use them
+		create_image_views();
 	}
 
 	void Vulkan::create_instance()
@@ -146,8 +147,7 @@ namespace diaxx
 			if (missing)
 			{
 				throw std::runtime_error(std::format(
-					"\n[Error]: The {} extension required by GLFW is not supported.\n",
-					extension));
+					"\n[Error]: The {} extension required by GLFW is not supported.\n", extension));
 			}
 		}
 
@@ -162,8 +162,7 @@ namespace diaxx
 			if (missing)
 			{
 				throw std::runtime_error(std::format(
-					"\n[Error]: The {} layer required by Vulkan is not supported.\n",
-					layer));
+					"\n[Error]: The {} layer required by Vulkan is not supported.\n", layer));
 			}
 		}
 	}
@@ -184,10 +183,7 @@ namespace diaxx
 	{
 		std::vector<const char*> required_layers {};
 		if (constants::g_enable_validation_layers)
-		{
-			required_layers.assign(constants::g_required_layers.begin(),
-				constants::g_required_layers.end());
-		}
+			required_layers.assign(constants::g_required_layers.begin(), constants::g_required_layers.end());
 
 		return required_layers;
 	}
@@ -226,8 +222,7 @@ namespace diaxx
 				const auto qfp_iterator { std::ranges::find_if(queue_families,
 					[](const auto& qfp)
 					{
-						 return (qfp.queueFlags & vk::QueueFlagBits::eGraphics) !=
-							 vk::QueueFlags {};
+						 return (qfp.queueFlags & vk::QueueFlagBits::eGraphics) != vk::QueueFlags {};
 					})};
 
 				if (qfp_iterator == queue_families.end())
@@ -355,7 +350,6 @@ namespace diaxx
 
 		const std::array<uint32_t, 2> queue_family_indices { m_graphics_queue_family_index, m_present_queue_family_index };
 
-
 		if (m_graphics_queue_family_index != m_present_queue_family_index)
 		{
 			swap_chain_create_info.imageSharingMode = vk::SharingMode::eConcurrent;
@@ -414,6 +408,24 @@ namespace diaxx
 				capabilities.maxImageExtent.width),
 			std::clamp<std::uint32_t>(static_cast<std::uint32_t>(height), capabilities.minImageExtent.height,
 				capabilities.maxImageExtent.height) };
+	}
+
+	void Vulkan::create_image_views()
+	{
+		m_swap_chain_image_views.clear();
+		m_swap_chain_image_views.reserve(m_swap_chain_images.size());
+
+		vk::ImageViewCreateInfo image_view_create_info {
+			.viewType = vk::ImageViewType::e2D,
+			.format = m_swap_chain_image_format,
+			.subresourceRange = { vk::ImageAspectFlagBits::eColor, 0, 1, 0, 1 }
+		};
+
+		for (const auto& image : m_swap_chain_images)
+		{
+			image_view_create_info.image = image;
+			m_swap_chain_image_views.emplace_back(m_device, image_view_create_info);
+		}
 	}
 
 	void Vulkan::main_loop()
