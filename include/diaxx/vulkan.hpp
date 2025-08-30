@@ -56,8 +56,9 @@ namespace diaxx
 			vk::DebugUtilsMessageTypeFlagsEXT type,
 			const vk::DebugUtilsMessengerCallbackDataEXT* callback_data, void* user_data);
 
-		void pick_physical_device(); // 2.2
-		void create_logical_device(); // 2.3
+		void create_surface(); // 2.2
+		void pick_physical_device(); // 2.3
+		void create_logical_device(); // 2.4
 
 		void main_loop(); // 3.
 
@@ -72,6 +73,9 @@ namespace diaxx
 		vk::raii::Device m_device { nullptr };
 		std::uint32_t m_graphics_queue_family_index {};
 		vk::PhysicalDeviceFeatures m_device_features {};
-		vk::raii::Queue m_graphics_queue { nullptr };	
+		vk::raii::Queue m_graphics_queue { nullptr };
+		vk::raii::SurfaceKHR m_surface { nullptr };
+		std::uint32_t m_present_queue_family_index {};
+		vk::raii::Queue m_present_queue { nullptr };
 	};
 }

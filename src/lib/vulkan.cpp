@@ -2,6 +2,7 @@
 #include "diaxx/vulkan.hpp"
 
 #include <algorithm>
+#include <cstddef>
 #include <format>
 #include <iostream>
 #include <memory>
@@ -44,6 +45,8 @@ namespace diaxx
 	{
 		// Enables communication between the application and Vulkan
 		create_instance();
+		// Connects the GLFW window with Vulkan to define where rendered frames will be presented
+		create_surface();
 		// Select a suitable GPU (physical device) that supports the required Vulkan features
 		pick_physical_device();
 		// Handle used to talk to the GPU
@@ -196,6 +199,15 @@ namespace diaxx
 		return vk::False;
 	}
 
+	void Vulkan::create_surface()
+	{
+		VkSurfaceKHR surface {};
+		if (glfwCreateWindowSurface(*m_instance, m_window.get(), nullptr, &surface) != VK_SUCCESS)
+			throw std::runtime_error("\n[Error]: The window surface could not be created.\n");
+
+		m_surface = vk::raii::SurfaceKHR(m_instance, surface);
+	}
+
 	void Vulkan::pick_physical_device()
 	{
 		const auto devices { m_instance.enumeratePhysicalDevices() };
@@ -218,6 +230,7 @@ namespace diaxx
 				if (qfp_iterator == queue_families.end())
 					return false;
 
+				// Queue family index that supports graphics commands (drawing)
 				const auto graphics_index { static_cast<std::uint32_t>(
 					std::distance(queue_families.begin(), qfp_iterator)) };
 
@@ -234,12 +247,30 @@ namespace diaxx
 						})};
 					found = found && (extension_iterator != extensions.end());
 				}
-
 				is_suitable = is_suitable && found;
+
+				// Queue family index that supports presentation (show images on a surface)
+				std::uint32_t present_index { static_cast<std::uint32_t>(queue_families.size()) };
+				if (device.getSurfaceSupportKHR(graphics_index, *m_surface))
+					present_index = graphics_index;
+				else
+				{
+					for (std::uint32_t i {}; i < queue_families.size(); ++i)
+					{
+						if (device.getSurfaceSupportKHR(i, *m_surface))
+						{
+							present_index = i;
+							break;
+						}
+					}
+				}
+				is_suitable = is_suitable && (present_index != queue_families.size());
+
 				if (is_suitable)
 				{
 					m_physical_device = device;
 					m_graphics_queue_family_index = graphics_index;
+					m_present_queue_family_index = present_index;
 				}
 
 				return is_suitable;
@@ -251,12 +282,24 @@ namespace diaxx
 
 	void Vulkan::create_logical_device()
 	{
+		const uint32_t graphics_index = m_graphics_queue_family_index;
+		const uint32_t present_index = m_present_queue_family_index;
+
 		constexpr float queue_priority { 1.0f };
-		const vk::DeviceQueueCreateInfo device_queue_create_info {
-			.queueFamilyIndex = m_graphics_queue_family_index,
+		std::vector<vk::DeviceQueueCreateInfo> device_queue_create_infos {};
+
+		device_queue_create_infos.push_back(vk::DeviceQueueCreateInfo {
+			.queueFamilyIndex = graphics_index,
 			.queueCount = 1,
-			.pQueuePriorities = &queue_priority
-		};
+			.pQueuePriorities = &queue_priority });
+
+		if (present_index != graphics_index)
+		{
+			device_queue_create_infos.push_back(vk::DeviceQueueCreateInfo {
+			.queueFamilyIndex = present_index,
+			.queueCount = 1,
+			.pQueuePriorities = &queue_priority });
+		}
 
 		const vk::StructureChain<vk::PhysicalDeviceFeatures2, vk::PhysicalDeviceVulkan13Features,
 			vk::PhysicalDeviceExtendedDynamicStateFeaturesEXT> feature_chain {
@@ -267,14 +310,15 @@ namespace diaxx
 
 		const vk::DeviceCreateInfo device_create_info {
 			.pNext = &feature_chain.get<vk::PhysicalDeviceFeatures2>(),
-			.queueCreateInfoCount = 1,
-			.pQueueCreateInfos = &device_queue_create_info,
+			.queueCreateInfoCount = static_cast<std::uint32_t>(device_queue_create_infos.size()),
+			.pQueueCreateInfos = device_queue_create_infos.data(),
 			.enabledExtensionCount = static_cast<std::uint32_t>(constants::g_device_extensions.size()),
 			.ppEnabledExtensionNames = constants::g_device_extensions.data()
 		};
 
 		m_device = vk::raii::Device(m_physical_device, device_create_info);
-		m_graphics_queue = vk::raii::Queue(m_device, m_graphics_queue_family_index, 0);
+		m_graphics_queue = vk::raii::Queue(m_device, graphics_index, 0);
+		m_present_queue = vk::raii::Queue(m_device, present_index, 0);
 	}
 
 	void Vulkan::main_loop()
