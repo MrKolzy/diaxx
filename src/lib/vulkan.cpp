@@ -55,6 +55,8 @@ namespace diaxx
 		create_swap_chain();
 		// Prepares the swap chain images so the GPU can actually use them
 		create_image_views();
+		// Defines how the GPU process vertices and fragments into pixels on the screen
+		create_graphics_pipeline();
 	}
 
 	void Vulkan::create_instance()
@@ -426,6 +428,11 @@ namespace diaxx
 			image_view_create_info.image = image;
 			m_swap_chain_image_views.emplace_back(m_device, image_view_create_info);
 		}
+	}
+
+	void Vulkan::create_graphics_pipeline()
+	{
+
 	}
 
 	void Vulkan::main_loop()

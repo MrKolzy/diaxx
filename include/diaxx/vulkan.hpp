@@ -70,6 +70,7 @@ namespace diaxx
 		vk::Extent2D choose_swap_extent(const vk::SurfaceCapabilitiesKHR& capabilities);
 
 		void create_image_views(); // 2.6
+		void create_graphics_pipeline(); // 2.7
 
 		void main_loop(); // 3.
 
