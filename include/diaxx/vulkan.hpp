@@ -59,6 +59,13 @@ namespace diaxx
 		void create_surface(); // 2.2
 		void pick_physical_device(); // 2.3
 		void create_logical_device(); // 2.4
+		void create_swap_chain(); // 2.5
+
+		vk::SurfaceFormatKHR choose_swap_surface_format(
+			const std::vector<vk::SurfaceFormatKHR>& available_formats);
+		vk::PresentModeKHR choose_swap_present_mode(
+			const std::vector<vk::PresentModeKHR>& available_present_modes);
+		vk::Extent2D choose_swap_extent(const vk::SurfaceCapabilitiesKHR& capabilities);
 
 		void main_loop(); // 3.
 
@@ -77,5 +84,9 @@ namespace diaxx
 		vk::raii::SurfaceKHR m_surface { nullptr };
 		std::uint32_t m_present_queue_family_index {};
 		vk::raii::Queue m_present_queue { nullptr };
+		vk::raii::SwapchainKHR m_swap_chain { nullptr };
+		std::vector<vk::Image> m_swap_chain_images {};
+		vk::Format m_swap_chain_image_format {};
+		vk::Extent2D m_swap_chain_extent {};
 	};
 }

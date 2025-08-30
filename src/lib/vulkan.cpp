@@ -5,6 +5,7 @@
 #include <cstddef>
 #include <format>
 #include <iostream>
+#include <limits>
 #include <memory>
 #include <print>
 #include <ranges>
@@ -51,6 +52,8 @@ namespace diaxx
 		pick_physical_device();
 		// Handle used to talk to the GPU
 		create_logical_device();
+		// Queue of images that Vulkan will render and present on the window surface
+		create_swap_chain();
 	}
 
 	void Vulkan::create_instance()
@@ -319,6 +322,98 @@ namespace diaxx
 		m_device = vk::raii::Device(m_physical_device, device_create_info);
 		m_graphics_queue = vk::raii::Queue(m_device, graphics_index, 0);
 		m_present_queue = vk::raii::Queue(m_device, present_index, 0);
+	}
+
+	void Vulkan::create_swap_chain()
+	{
+		const auto surface_capabilities { m_physical_device.getSurfaceCapabilitiesKHR(m_surface) };
+		const auto swap_chain_surface_format { choose_swap_surface_format(
+			m_physical_device.getSurfaceFormatsKHR(m_surface)) };
+
+		// Tells Vulkan the resolution of the images in the swapchain
+		const auto swap_chain_extent { choose_swap_extent(surface_capabilities) };
+
+		// How many images we keep in the swapchain for Vulkan to render and present
+		std::uint32_t image_count { surface_capabilities.minImageCount + 1 };
+		if (surface_capabilities.maxImageCount > 0 && image_count > surface_capabilities.maxImageCount)
+			image_count = surface_capabilities.maxImageCount;
+
+		vk::SwapchainCreateInfoKHR swap_chain_create_info {
+			.surface = m_surface,
+			.minImageCount = image_count,
+			.imageFormat = swap_chain_surface_format.format,
+			.imageColorSpace = swap_chain_surface_format.colorSpace,
+			.imageExtent = swap_chain_extent,
+			.imageArrayLayers = 1,
+			.imageUsage = vk::ImageUsageFlagBits::eColorAttachment,
+			.preTransform = surface_capabilities.currentTransform,
+			.compositeAlpha = vk::CompositeAlphaFlagBitsKHR::eOpaque,
+			.presentMode = choose_swap_present_mode(m_physical_device.getSurfacePresentModesKHR(m_surface)),
+			.clipped = vk::True,
+			.oldSwapchain = nullptr
+		};
+
+		const std::array<uint32_t, 2> queue_family_indices { m_graphics_queue_family_index, m_present_queue_family_index };
+
+
+		if (m_graphics_queue_family_index != m_present_queue_family_index)
+		{
+			swap_chain_create_info.imageSharingMode = vk::SharingMode::eConcurrent;
+			swap_chain_create_info.queueFamilyIndexCount = 2;
+			swap_chain_create_info.pQueueFamilyIndices = queue_family_indices.data();
+		}
+		else
+			swap_chain_create_info.imageSharingMode = vk::SharingMode::eExclusive;
+
+		m_swap_chain = vk::raii::SwapchainKHR(m_device, swap_chain_create_info);
+
+		m_swap_chain_images = m_swap_chain.getImages();
+		m_swap_chain_image_format = swap_chain_surface_format.format;
+		m_swap_chain_extent = swap_chain_extent;
+	}
+
+	vk::SurfaceFormatKHR Vulkan::choose_swap_surface_format(
+		const std::vector<vk::SurfaceFormatKHR>& available_formats)
+	{
+		for (const auto& available_format : available_formats)
+		{
+			if (available_format.format == vk::Format::eB8G8R8A8Srgb &&
+				available_format.colorSpace == vk::ColorSpaceKHR::eSrgbNonlinear)
+			{
+				return available_format;
+			}
+		}
+
+		return available_formats[0];
+	}
+
+	vk::PresentModeKHR Vulkan::choose_swap_present_mode(
+		const std::vector<vk::PresentModeKHR>& available_present_modes)
+	{
+		for (const auto& available_present_mode : available_present_modes)
+		{
+			if (available_present_mode == vk::PresentModeKHR::eMailbox)
+				return available_present_mode;
+		}
+
+		return vk::PresentModeKHR::eFifo;
+	}
+
+	vk::Extent2D Vulkan::choose_swap_extent(const vk::SurfaceCapabilitiesKHR& capabilities)
+	{
+		if (capabilities.currentExtent.width != std::numeric_limits<std::uint32_t>::max())
+			return capabilities.currentExtent;
+
+		int width {};
+		int height {};
+		glfwGetFramebufferSize(m_window.get(), &width, &height);
+
+		// Makes sure the swapchain image size matches the window size
+		return {
+			std::clamp<std::uint32_t>(static_cast<std::uint32_t>(width), capabilities.minImageExtent.width,
+				capabilities.maxImageExtent.width),
+			std::clamp<std::uint32_t>(static_cast<std::uint32_t>(height), capabilities.minImageExtent.height,
+				capabilities.maxImageExtent.height) };
 	}
 
 	void Vulkan::main_loop()
