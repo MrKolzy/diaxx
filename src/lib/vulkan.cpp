@@ -510,6 +510,26 @@ namespace diaxx
 		};
 
 		m_pipeline_layout = vk::raii::PipelineLayout(m_device, pipeline_layout_info);
+
+		const vk::PipelineRenderingCreateInfo pipeline_rendering_create_info {
+			.colorAttachmentCount = 1,
+			.pColorAttachmentFormats = &m_swap_chain_image_format
+		};
+
+		const vk::GraphicsPipelineCreateInfo pipeline_info {
+			.pNext = &pipeline_rendering_create_info,
+			.stageCount = 2,
+			.pStages = shader_stages,
+			.pVertexInputState = &vertex_input_info,
+			.pInputAssemblyState = &input_assembly,
+			.pViewportState = &viewport_state,
+			.pRasterizationState = &rasterizer,
+			.pMultisampleState = &multisampling,
+			.pColorBlendState = &color_blending,
+			.pDynamicState = &dynamic_state,
+			.layout = m_pipeline_layout,
+			.renderPass = nullptr
+		};
 	}
 
 	std::vector<char> Vulkan::read_file(const std::string& file_name)
