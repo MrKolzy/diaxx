@@ -530,6 +530,8 @@ namespace diaxx
 			.layout = m_pipeline_layout,
 			.renderPass = nullptr
 		};
+
+		m_graphics_pipeline = vk::raii::Pipeline(m_device, nullptr, pipeline_info);
 	}
 
 	std::vector<char> Vulkan::read_file(const std::string& file_name)
