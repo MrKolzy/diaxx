@@ -3,6 +3,7 @@ diaxx.sln
 diaxx.vcxproj
 diaxx.vcxproj.filters
 diaxx.vcxproj.user
+shader.spv
 
 # Folders
 .vs/

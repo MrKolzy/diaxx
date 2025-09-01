@@ -6,7 +6,9 @@
 #include <vulkan/vulkan_raii.hpp>
 
 #include <cstdint>
+#include <fstream>
 #include <span>
+#include <string>
 #include <vector>
 
 namespace diaxx
@@ -71,6 +73,9 @@ namespace diaxx
 
 		void create_image_views(); // 2.6
 		void create_graphics_pipeline(); // 2.7
+
+		[[nodiscard]] static std::vector<char> read_file(const std::string& file_name);
+		[[nodiscard]] vk::raii::ShaderModule create_shader_module(const std::vector<char>& code) const;
 
 		void main_loop(); // 3.
 

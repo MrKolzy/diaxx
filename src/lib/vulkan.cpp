@@ -432,7 +432,50 @@ namespace diaxx
 
 	void Vulkan::create_graphics_pipeline()
 	{
+		const vk::raii::ShaderModule shader_module { create_shader_module(read_file("shaders/shader.spv")) };
 
+		const vk::PipelineShaderStageCreateInfo vertex_shader_stage_info {
+			.stage = vk::ShaderStageFlagBits::eVertex,
+			.module = shader_module,
+			.pName = "vertMain"
+		};
+
+		const vk::PipelineShaderStageCreateInfo fragment_shader_stage_info {
+			.stage = vk::ShaderStageFlagBits::eFragment,
+			.module = shader_module,
+			.pName = "fragMain"
+		};
+
+		const vk::PipelineShaderStageCreateInfo shader_stages[] = { vertex_shader_stage_info,
+			fragment_shader_stage_info };
+	}
+
+	std::vector<char> Vulkan::read_file(const std::string& file_name)
+	{
+		std::ifstream file { file_name, std::ios::ate | std::ios::binary };
+		if (!file.is_open())
+			throw std::runtime_error("\n[Error]: Failed to open the file.\n");
+
+		const auto file_size { static_cast<std::size_t>(file.tellg()) };
+		std::vector<char> buffer(file_size);
+
+		file.seekg(0, std::ios::beg);
+		file.read(buffer.data(), static_cast<std::streamsize>(buffer.size()));
+		file.close();
+
+		return buffer;
+	}
+
+	vk::raii::ShaderModule Vulkan::create_shader_module(const std::vector<char>& code) const
+	{
+		const vk::ShaderModuleCreateInfo create_info {
+			.codeSize = code.size(),
+			.pCode = reinterpret_cast<const std::uint32_t*>(code.data())
+		};
+
+		vk::raii::ShaderModule shader_module { m_device, create_info };
+
+		return shader_module;
 	}
 
 	void Vulkan::main_loop()
