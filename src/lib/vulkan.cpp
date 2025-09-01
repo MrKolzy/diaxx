@@ -2,6 +2,7 @@
 #include "diaxx/vulkan.hpp"
 
 #include <algorithm>
+#include <array>
 #include <cstddef>
 #include <format>
 #include <iostream>
@@ -448,6 +449,67 @@ namespace diaxx
 
 		const vk::PipelineShaderStageCreateInfo shader_stages[] = { vertex_shader_stage_info,
 			fragment_shader_stage_info };
+
+		const std::vector dynamic_states { vk::DynamicState::eViewport, vk::DynamicState::eScissor };
+
+		const vk::PipelineDynamicStateCreateInfo dynamic_state {
+			.dynamicStateCount = static_cast<std::uint32_t>(dynamic_states.size()),
+			.pDynamicStates = dynamic_states.data()
+		};
+
+		constexpr vk::PipelineVertexInputStateCreateInfo vertex_input_info {};
+
+		constexpr vk::PipelineInputAssemblyStateCreateInfo input_assembly {
+			.topology = vk::PrimitiveTopology::eTriangleList
+		};
+
+		constexpr vk::PipelineViewportStateCreateInfo viewport_state {
+			.viewportCount = 1,
+			.scissorCount = 1
+		};
+
+		constexpr vk::PipelineRasterizationStateCreateInfo rasterizer {
+			.depthClampEnable = vk::False,
+			.rasterizerDiscardEnable = vk::False,
+			.polygonMode = vk::PolygonMode::eFill,
+			.cullMode = vk::CullModeFlagBits::eBack,
+			.frontFace = vk::FrontFace::eClockwise,
+			.depthBiasEnable = vk::False,
+			.depthBiasSlopeFactor = 1.0f,
+			.lineWidth = 1.0f
+		};
+
+		constexpr vk::PipelineMultisampleStateCreateInfo multisampling {
+			.rasterizationSamples = vk::SampleCountFlagBits::e1,
+			.sampleShadingEnable = vk::False
+		};
+
+		constexpr vk::PipelineColorBlendAttachmentState color_blend_attachment {
+			.blendEnable = vk::True,
+			.srcColorBlendFactor = vk::BlendFactor::eSrcAlpha,
+			.dstColorBlendFactor = vk::BlendFactor::eOneMinusSrcAlpha,
+			.colorBlendOp = vk::BlendOp::eAdd,
+			.srcAlphaBlendFactor = vk::BlendFactor::eOne,
+			.dstAlphaBlendFactor = vk::BlendFactor::eZero,
+			.alphaBlendOp = vk::BlendOp::eAdd,
+			.colorWriteMask = vk::ColorComponentFlagBits::eR |
+				vk::ColorComponentFlagBits::eG | vk::ColorComponentFlagBits::eB |
+				vk::ColorComponentFlagBits::eA,
+		};
+
+		const vk::PipelineColorBlendStateCreateInfo color_blending {
+			.logicOpEnable = vk::False,
+			.logicOp = vk::LogicOp::eCopy,
+			.attachmentCount = 1,
+			.pAttachments = &color_blend_attachment
+		};
+
+		constexpr vk::PipelineLayoutCreateInfo pipeline_layout_info {
+			.setLayoutCount = 0,
+			.pushConstantRangeCount = 0
+		};
+
+		m_pipeline_layout = vk::raii::PipelineLayout(m_device, pipeline_layout_info);
 	}
 
 	std::vector<char> Vulkan::read_file(const std::string& file_name)

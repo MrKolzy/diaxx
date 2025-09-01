@@ -99,5 +99,6 @@ namespace diaxx
 		vk::Format m_swap_chain_image_format {};
 		vk::Extent2D m_swap_chain_extent {};
 		std::vector<vk::raii::ImageView> m_swap_chain_image_views {};
+		vk::raii::PipelineLayout m_pipeline_layout { nullptr };
 	};
 }
