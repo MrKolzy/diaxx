@@ -58,6 +58,10 @@ namespace diaxx
 		create_image_views();
 		// Defines how the GPU process vertices and fragments into pixels on the screen
 		create_graphics_pipeline();
+		// Allocates draw command buffers for graphics and queue family
+		create_command_pool();
+		// Allocates the command buffer we'll submit to the graphics queue
+		create_command_buffer();
 	}
 
 	void Vulkan::create_instance()
@@ -560,6 +564,104 @@ namespace diaxx
 		vk::raii::ShaderModule shader_module { m_device, create_info };
 
 		return shader_module;
+	}
+
+	void Vulkan::create_command_pool()
+	{
+		const vk::CommandPoolCreateInfo pool_info {
+			.flags = vk::CommandPoolCreateFlagBits::eResetCommandBuffer,
+			.queueFamilyIndex = m_graphics_queue_family_index
+		};
+
+		m_command_pool = vk::raii::CommandPool(m_device, pool_info);
+	}
+
+	void Vulkan::create_command_buffer()
+	{
+		const vk::CommandBufferAllocateInfo allocate_info {
+			.commandPool = m_command_pool,
+			.level = vk::CommandBufferLevel::ePrimary,
+			.commandBufferCount = 1
+		};
+
+		m_command_buffer = std::move(vk::raii::CommandBuffers(m_device, allocate_info).front());
+	}
+
+	void Vulkan::record_command_buffer(std::uint32_t image_index)
+	{
+		m_command_buffer.begin({});
+
+		transition_image_layout(image_index, vk::ImageLayout::eUndefined,
+			vk::ImageLayout::eColorAttachmentOptimal, {}, vk::AccessFlagBits2::eColorAttachmentWrite,
+			vk::PipelineStageFlagBits2::eTopOfPipe, vk::PipelineStageFlagBits2::eColorAttachmentOutput);
+
+		constexpr vk::ClearValue clear_color { vk::ClearColorValue(0.0f, 0.0f, 0.0f, 1.0f) };
+		const vk::RenderingAttachmentInfo attachment_info {
+			.imageView = m_swap_chain_image_views[image_index],
+			.imageLayout = vk::ImageLayout::eColorAttachmentOptimal,
+			.loadOp = vk::AttachmentLoadOp::eClear,
+			.storeOp = vk::AttachmentStoreOp::eStore,
+			.clearValue = clear_color
+		};
+
+		const vk::RenderingInfo rendering_info {
+			.renderArea = {
+				.offset = {0, 0},
+				.extent = m_swap_chain_extent
+			},
+			.layerCount = 1,
+			.colorAttachmentCount = 1,
+			.pColorAttachments = &attachment_info
+		};
+
+		m_command_buffer.beginRendering(rendering_info);
+		m_command_buffer.bindPipeline(vk::PipelineBindPoint::eGraphics, m_graphics_pipeline);
+		m_command_buffer.setViewport(0, vk::Viewport(0.0f, 0.0f,
+			static_cast<float>(m_swap_chain_extent.width),
+			static_cast<float>(m_swap_chain_extent.height), 0.0f, 1.0f));
+		m_command_buffer.setScissor(0, vk::Rect2D(vk::Offset2D(0, 0), m_swap_chain_extent));
+		m_command_buffer.draw(3, 1, 0, 0);
+
+		m_command_buffer.endRendering();
+
+		transition_image_layout(image_index, vk::ImageLayout::eColorAttachmentOptimal,
+			vk::ImageLayout::ePresentSrcKHR, vk::AccessFlagBits2::eColorAttachmentWrite,
+			{}, vk::PipelineStageFlagBits2::eColorAttachmentOutput, vk::PipelineStageFlagBits2::eBottomOfPipe);
+
+		m_command_buffer.end();
+	}
+
+	void Vulkan::transition_image_layout(std::uint32_t image_index, vk::ImageLayout old_layout,
+		vk::ImageLayout new_layout, vk::AccessFlags2 source_access_mask,
+		vk::AccessFlags2 destination_access_mask, vk::PipelineStageFlags2 source_stage_mask,
+		vk::PipelineStageFlags2 destination_stage_mask)
+	{
+		const vk::ImageMemoryBarrier2 barrier {
+			.srcStageMask = source_stage_mask,
+			.srcAccessMask = source_access_mask,
+			.dstStageMask = destination_stage_mask,
+			.dstAccessMask = destination_access_mask,
+			.oldLayout = old_layout,
+			.newLayout = new_layout,
+			.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+			.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+			.image = m_swap_chain_images[image_index],
+			.subresourceRange = {
+				.aspectMask = vk::ImageAspectFlagBits::eColor,
+				.baseMipLevel = 0,
+				.levelCount = 1,
+				.baseArrayLayer = 0,
+				.layerCount = 1
+			}
+		};
+
+		const vk::DependencyInfo dependency_info {
+			.dependencyFlags = {},
+			.imageMemoryBarrierCount = 1,
+			.pImageMemoryBarriers = &barrier
+		};
+
+		m_command_buffer.pipelineBarrier2(dependency_info);
 	}
 
 	void Vulkan::main_loop()

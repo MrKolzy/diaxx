@@ -77,6 +77,15 @@ namespace diaxx
 		[[nodiscard]] static std::vector<char> read_file(const std::string& file_name);
 		[[nodiscard]] vk::raii::ShaderModule create_shader_module(const std::vector<char>& code) const;
 
+		void create_command_pool(); // 2.8
+		void create_command_buffer(); // 2.9
+
+		void record_command_buffer(std::uint32_t image_index);
+		void transition_image_layout(std::uint32_t image_index, vk::ImageLayout old_layout,
+			vk::ImageLayout new_layout, vk::AccessFlags2 source_access_mask,
+			vk::AccessFlags2 destination_access_mask, vk::PipelineStageFlags2 source_stage_mask,
+			vk::PipelineStageFlags2 destination_stage_mask);
+
 		void main_loop(); // 3.
 
 		GLFWContext m_glfw {};
@@ -101,5 +110,7 @@ namespace diaxx
 		std::vector<vk::raii::ImageView> m_swap_chain_image_views {};
 		vk::raii::PipelineLayout m_pipeline_layout { nullptr };
 		vk::raii::Pipeline m_graphics_pipeline { nullptr };
+		vk::raii::CommandPool m_command_pool { nullptr };
+		vk::raii::CommandBuffer m_command_buffer { nullptr };
 	};
 }
